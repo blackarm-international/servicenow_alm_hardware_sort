@@ -1,18 +1,6 @@
-interface Hardware {
-  modelCategoryName: null | string;
-  modelSysId: null | string;
-  parent: null | string;
-  rackName: null | string;
-  rackSysId: null | string;
-  rackU: null | number;
-  slot: null | number;
-}
-interface Model {
-  rackUnits: null | number;
-}
-
-const hasKey = (testObject: any, keyString: any) => {
-  return Object.prototype.hasOwnProperty.call(testObject, keyString);
+"use strict";
+var hasKey = function (testObject, keyString) {
+    return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
 // const testValidChassisSled = (
 //   hardware: Hardware,
@@ -334,163 +322,146 @@ const hasKey = (testObject: any, keyString: any) => {
 //     patchpanelSortResult,
 //   };
 // };
-const findCategory = (
-  hardwareSysId: string,
-  tempHardwareData: Record<string, Hardware>,
-  tempModelData: Record<string, Model>,
-) => {
-  if (tempModelData !== null) {
-    if (tempHardwareData !== null) {
-      if (hardwareSysId !== null) {
-        return 'sled';
-      } 
+var findCategory = function (hardwareSysId, tempHardwareData, tempModelData) {
+    if (tempModelData !== null) {
+        if (tempHardwareData !== null) {
+            if (hardwareSysId !== null) {
+                return 'sled';
+            }
+        }
     }
-  }
-  return 'sled';
+    return 'sled';
 };
-const sortHardware = (
-  tempHardwareData: Record<string, Hardware>,
-  tempModelData: Record<string, Model>,
-) => {
-  let category: string;
-  let outputData: Record<string, Record<string, Record<string, Hardware>>> = {};
-  let tempRackName: null | string;
-  Object.keys(tempHardwareData).forEach((hardwareSysId) => {
-    category = findCategory(
-      hardwareSysId,
-      tempHardwareData,
-      tempModelData,
-    );
-    tempRackName = tempHardwareData[hardwareSysId].rackName;
-    if (tempRackName !== null) {
-      if (!hasKey(outputData, tempRackName)) {
-        outputData[tempRackName] = {
-          'bad_data': {},
-          'network': {},
-          'pdu': {},
-          'server': {},
-          'sled': {},
-        };
-      }
-      if (category === 'sled') {
-        outputData[tempRackName].sled[hardwareSysId] = tempHardwareData[hardwareSysId];
-      }
-    }
-  });
-  // @ts-ignore
-  gs.print(JSON.stringify(outputData, null, 2));
+var sortHardware = function (tempHardwareData, tempModelData) {
+    var category;
+    var outputData = {};
+    var tempRackName;
+    Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
+        category = findCategory(hardwareSysId, tempHardwareData, tempModelData);
+        tempRackName = tempHardwareData[hardwareSysId].rackName;
+        if (tempRackName !== null) {
+            if (!hasKey(outputData, tempRackName)) {
+                outputData[tempRackName] = {
+                    'bad_data': {},
+                    'network': {},
+                    'pdu': {},
+                    'server': {},
+                    'sled': {},
+                };
+            }
+            if (category === 'sled') {
+                outputData[tempRackName].sled[hardwareSysId] = tempHardwareData[hardwareSysId];
+            }
+        }
+    });
+    // @ts-ignore
+    gs.print(JSON.stringify(outputData, null, 2));
 };
-const main = (
-  tempRackSysIdList: Array<string>,
-) => {
-  let hardwareData: Record<string, Hardware> = {};
-  let modelData: Record<string, Model> = {};
-  let modelSysIdUnique: Record<string, boolean> = {};
-  let modelSysIdList: Array<string>;
-  let tempHardware: Hardware;
-  let tempModel: Model;
-  let testData: any;
-  if (tempRackSysIdList.length !== 0) {
-    // @ts-ignore
-    const grHardware = new GlideRecord('alm_hardware');
-    grHardware.addQuery('u_rack', 'IN', tempRackSysIdList);
-    grHardware.query();
-    while (grHardware.next()) {
-      tempHardware = {
-        modelCategoryName: null,
-        modelSysId: null,
-        parent: null,
-        rackName: null,
-        rackSysId: null,
-        rackU: null,
-        slot: null,
-      };
-      //
-      testData = grHardware.getDisplayValue('model_category');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempHardware.modelCategoryName = testData;
+var main = function (tempRackSysIdList) {
+    var hardwareData = {};
+    var modelData = {};
+    var modelSysIdUnique = {};
+    var modelSysIdList;
+    var tempHardware;
+    var tempModel;
+    var testData;
+    if (tempRackSysIdList.length !== 0) {
+        // @ts-ignore
+        var grHardware = new GlideRecord('alm_hardware');
+        grHardware.addQuery('u_rack', 'IN', tempRackSysIdList);
+        grHardware.query();
+        while (grHardware.next()) {
+            tempHardware = {
+                modelCategoryName: null,
+                modelSysId: null,
+                parent: null,
+                rackName: null,
+                rackSysId: null,
+                rackU: null,
+                slot: null,
+            };
+            //
+            testData = grHardware.getDisplayValue('model_category');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempHardware.modelCategoryName = testData;
+                }
+            }
+            //
+            testData = grHardware.getValue('model');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempHardware.modelSysId = testData;
+                    modelSysIdUnique[testData] = true;
+                }
+            }
+            //
+            testData = grHardware.getValue('parent');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempHardware.parent = testData;
+                }
+            }
+            //
+            testData = grHardware.getDisplayValue('u_rack');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempHardware.rackName = testData;
+                }
+            }
+            //
+            testData = grHardware.getValue('u_rack');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempHardware.rackSysId = testData;
+                }
+            }
+            //
+            testData = grHardware.getValue('u_rack_u');
+            if (!isNaN(parseInt(testData, 10))) {
+                tempHardware.rackU = parseInt(testData, 10);
+            }
+            //
+            testData = grHardware.getValue('u_slot');
+            if (!isNaN(parseInt(testData, 10))) {
+                tempHardware.slot = parseInt(testData, 10);
+            }
+            //
+            hardwareData[grHardware.getUniqueValue()] = {
+                modelCategoryName: tempHardware.modelCategoryName,
+                modelSysId: tempHardware.modelSysId,
+                parent: tempHardware.parent,
+                rackName: tempHardware.rackName,
+                rackSysId: tempHardware.rackSysId,
+                rackU: tempHardware.rackU,
+                slot: tempHardware.slot,
+            };
         }
-      }
-      //
-      testData = grHardware.getValue('model');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempHardware.modelSysId = testData;
-          modelSysIdUnique[testData] = true;
-        }
-      }
-      //
-      testData = grHardware.getValue('parent');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempHardware.parent = testData;
-        }
-      }
-      //
-      testData = grHardware.getDisplayValue('u_rack');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempHardware.rackName = testData;
-        }
-      }
-      //
-      testData = grHardware.getValue('u_rack');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempHardware.rackSysId = testData;
-        }
-      }
-      //
-      testData = grHardware.getValue('u_rack_u');
-      if (!isNaN(parseInt(testData, 10))) {
-        tempHardware.rackU = parseInt(testData, 10);
-      }
-      //
-      testData = grHardware.getValue('u_slot');
-      if (!isNaN(parseInt(testData, 10))) {
-        tempHardware.slot = parseInt(testData, 10);
-      }
-      //
-      hardwareData[grHardware.getUniqueValue()] = {
-        modelCategoryName: tempHardware.modelCategoryName,
-        modelSysId: tempHardware.modelSysId,
-        parent: tempHardware.parent,
-        rackName: tempHardware.rackName,
-        rackSysId: tempHardware.rackSysId,
-        rackU: tempHardware.rackU,
-        slot: tempHardware.slot,
-      };
     }
-  }
-  modelSysIdList = Object.keys(modelSysIdUnique);
-  if (modelSysIdList.length !== 0) {
-    // @ts-ignore
-    const grModel = new GlideRecord('cmdb_model');
-    grModel.addQuery('sys_id', 'IN', modelSysIdList);
-    grModel.query();
-    while (grModel.next()) {
-      tempModel = {
-        rackUnits: null,
-      };
-      //
-      testData = grModel.getValue('rack_units');
-      if (!isNaN(parseInt(testData, 10))) {
-        tempModel.rackUnits = parseInt(testData, 10);
-      }
-      //
-      modelData[grModel.getUniqueValue()] = {
-        rackUnits: tempModel.rackUnits,
-      };
+    modelSysIdList = Object.keys(modelSysIdUnique);
+    if (modelSysIdList.length !== 0) {
+        // @ts-ignore
+        var grModel = new GlideRecord('cmdb_model');
+        grModel.addQuery('sys_id', 'IN', modelSysIdList);
+        grModel.query();
+        while (grModel.next()) {
+            tempModel = {
+                rackUnits: null,
+            };
+            //
+            testData = grModel.getValue('rack_units');
+            if (!isNaN(parseInt(testData, 10))) {
+                tempModel.rackUnits = parseInt(testData, 10);
+            }
+            //
+            modelData[grModel.getUniqueValue()] = {
+                rackUnits: tempModel.rackUnits,
+            };
+        }
     }
-  }
-  sortHardware(
-    hardwareData,
-    modelData,
-  );
+    sortHardware(hardwareData, modelData);
 };
 //
-
-const rackSysIdString = 'bc22df4adb1ec70cab79f7d41d9619f6,b817db4edb168bc010b6f1561d961914,f4738c21dbb1c7442b56541adc96196a,b1c34461dbb1c7442b56541adc96198f,efd3cc61dbb1c7442b56541adc961978,bdba2b74db271788259e5898dc9619a4,3abaa3f4db271788259e5898dc9619ab,3bba63f4db271788259e5898dc961971,30cae3f4db271788259e5898dc961926,0aca67f4db271788259e5898dc961979,e3a4fc5bdb7f8b80a9885205dc9619a5,3eca67f4db271788259e5898dc961980,3bca27f4db271788259e5898dc9619a1,09da2bf4db271788259e5898dc961954,c2da63f4db271788259e5898dc96197a,03da2bf4db271788259e5898dc961946,40c4789bdb7f8b80a9885205dc9619d8,9dec376a2b45820054a41bc5a8da15e9,c2ea8b2edb151f80a9885205dc9619d9,fa94f8ebdbed389459ac6e25ca9619fe,acbc736a2b45820054a41bc5a8da1503';
-const rackSysIdList = rackSysIdString.split(',');
+var rackSysIdString = 'bc22df4adb1ec70cab79f7d41d9619f6,b817db4edb168bc010b6f1561d961914,f4738c21dbb1c7442b56541adc96196a,b1c34461dbb1c7442b56541adc96198f,efd3cc61dbb1c7442b56541adc961978,bdba2b74db271788259e5898dc9619a4,3abaa3f4db271788259e5898dc9619ab,3bba63f4db271788259e5898dc961971,30cae3f4db271788259e5898dc961926,0aca67f4db271788259e5898dc961979,e3a4fc5bdb7f8b80a9885205dc9619a5,3eca67f4db271788259e5898dc961980,3bca27f4db271788259e5898dc9619a1,09da2bf4db271788259e5898dc961954,c2da63f4db271788259e5898dc96197a,03da2bf4db271788259e5898dc961946,40c4789bdb7f8b80a9885205dc9619d8,9dec376a2b45820054a41bc5a8da15e9,c2ea8b2edb151f80a9885205dc9619d9,fa94f8ebdbed389459ac6e25ca9619fe,acbc736a2b45820054a41bc5a8da1503';
+var rackSysIdList = rackSysIdString.split(',');
 main(rackSysIdList);
