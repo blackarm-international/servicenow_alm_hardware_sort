@@ -2,112 +2,60 @@
 var hasKey = function (testObject, keyString) {
     return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
-// const testValidChassisSled = (
-//   hardware: Hardware,
-//   hardwareData: Record<string, Hardware>,
-// ) => {
-//   try {
-//     if (hardware.slot === null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid sled - slot missing',
-//       };
-//     }
-//     if (hardware.slot === 0) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid sled - slot is zero',
-//       };
-//     }
-//     if (hardware.parent === null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid sled - parent missing',
-//       };
-//     }
-//     if (!hasKey(hardwareData, hardware.parent)) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid sled - parent not found in hardwareData',
-//       };
-//     }
-//     if (hardwareData[hardware.parent].rackSysId !== hardware.rackSysId) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid sled - parent not in same rack',
-//       };
-//     }
-//     return {
-//       pass: true,
-//       failReport: '',
-//     };
-//   } catch (err) {
-//     errorLog('testValidChassisSled', err);
-//     return {
-//       pass: false,
-//       failReport: 'not a valid sled - function crashed',
-//     };
-//   }
-// };
-// const testValidRackMounted = (
-//   hardware: Hardware,
-//   modelData: Record<string, Model>,
-// ) => {
-//   try {
-//     if (hardware.parent !== null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid rack mounted - has a parent',
-//       };
-//     }
-//     if (hardware.rackU === null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - u_rack_u is missing',
-//       };
-//     }
-//     if (hardware.rackU === 0) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - u_rack_u is zero',
-//       };
-//     }
-//     if (hardware.modelSysId === null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - does not have a model',
-//       };
-//     }
-//     if (!hasKey(modelData, hardware.modelSysId)) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - model not found',
-//       };
-//     }
-//     if (modelData[hardware.modelSysId].rackUnits === null) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - model height is missing',
-//       };
-//     }
-//     if (modelData[hardware.modelSysId].rackUnits === 0) {
-//       return {
-//         pass: false,
-//         failReport: 'not a valid  rack mounted - model height is zero',
-//       };
-//     }
-//     return {
-//       pass: true,
-//       failReport: '',
-//     };
-//   } catch (err) {
-//     errorLog('testValidRackMounted', err);
-//     return {
-//       pass: false,
-//       failReport: 'not a valid rack mounted - function crashed',
-//     };
-//   }
-// };
+var testValidChassisSled = function (hardwareSysId, tempHardwareData) {
+    var tempHardware = tempHardwareData[hardwareSysId];
+    // needs a slot
+    if (tempHardware.slot === null) {
+        return false;
+    }
+    // needs a parent sys_id
+    if (tempHardware.parent === null) {
+        return false;
+    }
+    // parent needs to exist
+    if (!hasKey(tempHardwareData, tempHardware.parent)) {
+        return false;
+    }
+    // parent needs to be in the same rack
+    if (tempHardwareData[tempHardware.parent].rackSysId !== tempHardware.rackSysId) {
+        return false;
+    }
+    // all tests passed
+    return true;
+};
+var testValidRackMounted = function (hardwareSysId, tempHardwareData, tempModelData) {
+    var tempHardware = tempHardwareData[hardwareSysId];
+    // rack mounted hardware should not have a parent
+    if (tempHardware.parent !== null) {
+        return false;
+    }
+    // should have a rack_u
+    if (tempHardware.rackU === null) {
+        return false;
+    }
+    // rack_u should not be zero
+    if (tempHardware.rackU === 0) {
+        return false;
+    }
+    // needs a model sys_id
+    if (tempHardware.modelSysId === null) {
+        return false;
+    }
+    // model sys_id must relate to an existing model
+    if (!hasKey(tempModelData, tempHardware.modelSysId)) {
+        return false;
+    }
+    // the model must have a height in rack_units
+    if (tempModelData[tempHardware.modelSysId].rackUnits === null) {
+        return false;
+    }
+    // model height cannot be zero
+    if (tempModelData[tempHardware.modelSysId].rackUnits === 0) {
+        return false;
+    }
+    // all tests passed
+    return true;
+};
 // const testValidPatchpanel = (
 //   patchpanel: Patchpanel,
 //   modelData: Record<string, Model>,
@@ -203,134 +151,14 @@ var hasKey = function (testObject, keyString) {
 //     };
 //   }
 // };
-// const calculateSortedHardware = (
-//   hardwareData: Record<string, Hardware>,
-//   modelData: Record<string, Model>,
-//   patchpanelData: Record<string, Patchpanel>,
-// ) => {
-//   let hardware: Hardware;
-//   const hardwareBadData: Record<string, Record<string, boolean>> = {};
-//   const hardwareChassisSled: Record<string, Record<string, boolean>> = {};
-//   const hardwareChassisNetwork: Record<string, Record<string, boolean>> = {};
-//   const hardwarePdu: Record<string, Record<string, boolean>> = {};
-//   const hardwareRackMounted: Record<string, Record<string, boolean>> = {};
-//   const hardwareRackMountedUnique: Record<string, boolean> = {};
-//   const hardwareSortResult: Record<string, string> = {};
-//   let ignore: boolean;
-//   let parent: null | string;
-//   let patchpanel: Patchpanel;
-//   const patchpanelRackMounted: Record<string, Record<string, boolean>> = {};
-//   const patchpanelBadData: Record<string, Record<string, boolean>> = {};
-//   const patchpanelSortResult: Record<string, string> = {};
-//   let rackSysId: null | string;
-//   let sortResult: SortResult;
-//   let tempFailReport: null | string;
-//   try {
-//     Object.keys(hardwareData).forEach((hardwareSysId) => {
-//       tempFailReport = '';
-//       hardware = hardwareData[hardwareSysId];
-//       parent = hardware.parent;
-//       rackSysId = hardware.rackSysId;
-//       if (rackSysId !== null) {
-//         // ignore racks
-//         ignore = false;
-//         if (hardware.modelSysId !== null) {
-//           if (hasKey(modelData, hardware.modelSysId)) {
-//             if (modelData[hardware.modelSysId].deviceCategory === 'Rack') {
-//               ignore = true;
-//             }
-//           }
-//         }
-//         if (ignore === false) {
-//           // test for sleds (most common)
-//           sortResult = testValidChassisSled(hardware, hardwareData);
-//           if (sortResult.pass && parent !== null) {
-//             if (!hasKey(hardwareChassisSled, parent)) {
-//               hardwareChassisSled[parent] = {};
-//             }
-//             hardwareChassisSled[parent][hardwareSysId] = true;
-//           } else {
-//             tempFailReport += `${sortResult.failReport}/`;
-//             sortResult = testValidRackMounted(hardware, modelData);
-//             if (sortResult.pass) {
-//               if (!hasKey(hardwareRackMounted, rackSysId)) {
-//                 hardwareRackMounted[rackSysId] = {};
-//               }
-//               hardwareRackMounted[rackSysId][hardwareSysId] = true;
-//               hardwareRackMountedUnique[hardwareSysId] = true;
-//             } else {
-//               tempFailReport += `${sortResult.failReport}/`;
-//               sortResult = testValidChassisNetwork(hardware, hardwareData);
-//               if (sortResult.pass && parent !== null) {
-//                 if (!hasKey(hardwareChassisNetwork, parent)) {
-//                   hardwareChassisNetwork[parent] = {};
-//                 }
-//                 hardwareChassisNetwork[parent][hardwareSysId] = true;
-//               } else {
-//                 tempFailReport += `${sortResult.failReport}/`;
-//                 if (hardware.modelCategoryName === 'PDU') {
-//                   if (!hasKey(hardwarePdu, rackSysId)) {
-//                     hardwarePdu[rackSysId] = {};
-//                   }
-//                   hardwarePdu[rackSysId][hardwareSysId] = true;
-//                 } else {
-//                   tempFailReport += 'not a valid pdu - model category wrong';
-//                   if (!hasKey(hardwareBadData, rackSysId)) {
-//                     hardwareBadData[rackSysId] = {};
-//                   }
-//                   hardwareSortResult[hardwareSysId] = tempFailReport;
-//                   hardwareBadData[rackSysId][hardwareSysId] = true;
-//                 }
-//               }
-//             }
-//           }
-//         }
-//       }
-//     });
-//     Object.keys(patchpanelData).forEach((patchpanelSysId) => {
-//       patchpanel = patchpanelData[patchpanelSysId];
-//       rackSysId = patchpanel.patchRackSysId;
-//       sortResult = testValidPatchpanel(patchpanel, modelData);
-//       if (rackSysId !== null) {
-//         if (sortResult.pass && rackSysId !== null) {
-//           if (!hasKey(patchpanelRackMounted, rackSysId)) {
-//             patchpanelRackMounted[rackSysId] = {};
-//           }
-//           patchpanelRackMounted[rackSysId][patchpanelSysId] = true;
-//         } else {
-//           patchpanelSortResult[patchpanelSysId] = sortResult.failReport;
-//           if (!hasKey(patchpanelBadData, rackSysId)) {
-//             patchpanelBadData[rackSysId] = {};
-//           }
-//           patchpanelBadData[rackSysId][patchpanelSysId] = true;
-//         }
-//       }
-//     });
-//   } catch (err) {
-//     errorLog('calculateSortedHardware', err);
-//   }
-//   return {
-//     hardwareBadData,
-//     hardwareChassisNetwork,
-//     hardwareChassisSled,
-//     hardwarePdu,
-//     hardwareRackMounted,
-//     hardwareRackMountedUnique,
-//     hardwareSortResult,
-//     patchpanelBadData,
-//     patchpanelRackMounted,
-//     patchpanelSortResult,
-//   };
-// };
 var findCategory = function (hardwareSysId, tempHardwareData, tempModelData) {
-    if (tempModelData !== null) {
-        if (tempHardwareData !== null) {
-            if (hardwareSysId !== null) {
-                return 'sled';
-            }
-        }
+    if (testValidChassisSled(hardwareSysId, tempHardwareData)) {
+        return 'sled';
     }
-    return 'sled';
+    if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
+        return 'rack_mounted';
+    }
+    return 'bad_data';
 };
 var sortHardware = function (tempHardwareData, tempModelData) {
     var category;
@@ -345,12 +173,15 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                     'bad_data': {},
                     'network': {},
                     'pdu': {},
-                    'server': {},
+                    'rack_mounted': {},
                     'sled': {},
                 };
             }
             if (category === 'sled') {
                 outputData[tempRackName].sled[hardwareSysId] = tempHardwareData[hardwareSysId];
+            }
+            if (category === 'rack_mounted') {
+                outputData[tempRackName].rack_mounted[hardwareSysId] = tempHardwareData[hardwareSysId];
             }
         }
     });
