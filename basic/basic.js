@@ -112,6 +112,7 @@ var findCategory = function (hardwareSysId, tempHardwareData, tempModelData) {
 var sortHardware = function (tempHardwareData, tempModelData) {
     var category;
     var outputData = {};
+    var maxChildren;
     var modelName;
     var modelSysId;
     var tempLineCards = {};
@@ -119,10 +120,13 @@ var sortHardware = function (tempHardwareData, tempModelData) {
     var sysIdParent;
     var sysIdRack;
     Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
+        // get relevant model data
+        maxChildren = null;
         modelName = null;
         modelSysId = tempHardwareData[hardwareSysId].modelSysId;
         if (modelSysId !== null) {
             if (hasKey(tempModelData, modelSysId)) {
+                maxChildren = tempModelData[modelSysId].maxChildren;
                 modelName = tempModelData[modelSysId].modelName;
             }
         }
@@ -158,6 +162,7 @@ var sortHardware = function (tempHardwareData, tempModelData) {
             if (category === 'rackMounted') {
                 outputData[sysIdRack].rackMounted[hardwareSysId] = {
                     displayName: tempHardwareData[hardwareSysId].displayName,
+                    maxChildren: maxChildren,
                     lineCards: {},
                     modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
                     modelName: modelName,
@@ -200,34 +205,75 @@ var sortHardware = function (tempHardwareData, tempModelData) {
     });
     // insert sleds
     Object.keys(tempSleds).forEach(function (hardwareSysId) {
+        var validSled = false;
+        var slot;
         sysIdParent = tempSleds[hardwareSysId].parent;
         sysIdRack = tempSleds[hardwareSysId].rackSysId;
-        if (sysIdParent !== null && sysIdRack !== null) {
-            if (hasKey(outputData, sysIdRack)) {
-                if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-                    outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
-                        displayName: tempSleds[hardwareSysId].displayName,
-                        modelName: tempSleds[hardwareSysId].modelName,
-                        slot: tempSleds[hardwareSysId].slot,
-                        url: tempSleds[hardwareSysId].url,
-                    };
+        if (sysIdRack !== null) {
+            if (sysIdParent !== null) {
+                if (hasKey(outputData, sysIdRack)) {
+                    if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+                        // sleds can not have a slot value less than one
+                        // sleds can not have a slot value greater than the chassis u_max_children
+                        maxChildren = outputData[sysIdRack].rackMounted[sysIdParent].maxChildren;
+                        slot = tempSleds[hardwareSysId].slot;
+                        // sleds can only be parented to a rackmounted object with a valid u_max_children value
+                        if (maxChildren !== null) {
+                            // slot value must be valid
+                            if (slot !== null && slot > 0 && slot <= maxChildren) {
+                                validSled = true;
+                                outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+                                    displayName: tempSleds[hardwareSysId].displayName,
+                                    modelName: tempSleds[hardwareSysId].modelName,
+                                    slot: tempSleds[hardwareSysId].slot,
+                                    url: tempSleds[hardwareSysId].url,
+                                };
+                            }
+                        }
+                    }
                 }
+            }
+            if (validSled === false) {
+                outputData[sysIdRack].badData[hardwareSysId] = {
+                    displayName: tempSleds[hardwareSysId].displayName,
+                    modelCategoryName: tempSleds[hardwareSysId].modelCategoryName,
+                    modelName: tempSleds[hardwareSysId].modelName,
+                    parent: tempSleds[hardwareSysId].parent,
+                    rackU: tempSleds[hardwareSysId].rackU,
+                    slot: tempSleds[hardwareSysId].slot,
+                    url: tempSleds[hardwareSysId].url,
+                };
             }
         }
     });
     // insert line cards
     Object.keys(tempLineCards).forEach(function (hardwareSysId) {
+        var validLineCard = false;
         sysIdParent = tempLineCards[hardwareSysId].parent;
         sysIdRack = tempLineCards[hardwareSysId].rackSysId;
-        if (sysIdParent !== null && sysIdRack !== null) {
-            if (hasKey(outputData, sysIdRack)) {
-                if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-                    outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
-                        displayName: tempLineCards[hardwareSysId].displayName,
-                        modelName: tempLineCards[hardwareSysId].modelName,
-                        url: tempLineCards[hardwareSysId].url,
-                    };
+        if (sysIdRack !== null) {
+            if (sysIdParent !== null) {
+                if (hasKey(outputData, sysIdRack)) {
+                    if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+                        validLineCard = true;
+                        outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
+                            displayName: tempLineCards[hardwareSysId].displayName,
+                            modelName: tempLineCards[hardwareSysId].modelName,
+                            url: tempLineCards[hardwareSysId].url,
+                        };
+                    }
                 }
+            }
+            if (validLineCard === false) {
+                outputData[sysIdRack].badData[hardwareSysId] = {
+                    displayName: tempLineCards[hardwareSysId].displayName,
+                    modelCategoryName: tempLineCards[hardwareSysId].modelCategoryName,
+                    modelName: tempLineCards[hardwareSysId].modelName,
+                    parent: tempLineCards[hardwareSysId].parent,
+                    rackU: tempLineCards[hardwareSysId].rackU,
+                    slot: tempLineCards[hardwareSysId].slot,
+                    url: tempLineCards[hardwareSysId].url,
+                };
             }
         }
     });
@@ -336,9 +382,15 @@ var main = function (sysIdRackList) {
         grModel.query();
         while (grModel.next()) {
             tempModel = {
+                maxChildren: null,
                 modelName: null,
                 rackUnits: null,
             };
+            //
+            testData = grModel.getValue('u_max_children');
+            if (!isNaN(parseInt(testData, 10))) {
+                tempModel.maxChildren = parseInt(testData, 10);
+            }
             //
             testData = grModel.getValue('display_name');
             if (typeof testData === 'string') {
@@ -353,6 +405,7 @@ var main = function (sysIdRackList) {
             }
             //
             modelData[grModel.getUniqueValue()] = {
+                maxChildren: tempModel.maxChildren,
                 modelName: tempModel.modelName,
                 rackUnits: tempModel.rackUnits,
             };
