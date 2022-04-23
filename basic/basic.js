@@ -138,7 +138,15 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                 };
             }
             if (category === 'badData') {
-                outputData[sysIdRack].badData[hardwareSysId] = tempHardwareData[hardwareSysId];
+                outputData[sysIdRack].badData[hardwareSysId] = {
+                    displayName: tempHardwareData[hardwareSysId].displayName,
+                    modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
+                    modelName: modelName,
+                    parent: tempHardwareData[hardwareSysId].parent,
+                    rackU: tempHardwareData[hardwareSysId].rackU,
+                    slot: tempHardwareData[hardwareSysId].slot,
+                    url: tempHardwareData[hardwareSysId].url,
+                };
             }
             if (category === 'pdu') {
                 outputData[sysIdRack].pdu[hardwareSysId] = {

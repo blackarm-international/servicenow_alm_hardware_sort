@@ -1,4 +1,4 @@
-// this is the default for hardware before it is sorted into smaller datastructures
+// data from glide records
 interface Hardware {
   displayName: null | string;
   modelCategoryName: null | string;
@@ -11,7 +11,20 @@ interface Hardware {
   slot: null | number;
   url: null | string;
 }
+interface Model {
+  modelName: null | string;
+  rackUnits: null | number;
+}
 // smaller datastructures based on Hardware, but with excess data removed
+interface BadData {
+  displayName: null | string;
+  modelCategoryName: null | string;
+  modelName: null | string;
+  parent: null | string;
+  rackU: null | number;
+  slot: null | number;
+  url: null | string;
+}
 interface LineCard {
   displayName: null | string;
   modelName: null | string;
@@ -39,14 +52,10 @@ interface Sled {
 }
 // the rack
 interface Rack {
-  badData: Record<string, Hardware>;
+  badData: Record<string, BadData>;
   pdu: Record<string, Pdu>;
   rackMounted: Record<string, RackMounted>;
   rackName: null | string;
-}
-interface Model {
-  modelName: null | string;
-  rackUnits: null | number;
 }
 // global variables
 const rackSysIdList: Array<string> = [
@@ -211,7 +220,15 @@ const sortHardware = (
         };
       }
       if (category === 'badData') {
-        outputData[sysIdRack].badData[hardwareSysId] = tempHardwareData[hardwareSysId];
+        outputData[sysIdRack].badData[hardwareSysId] = {
+          displayName: tempHardwareData[hardwareSysId].displayName,
+          modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
+          modelName,
+          parent: tempHardwareData[hardwareSysId].parent,
+          rackU: tempHardwareData[hardwareSysId].rackU,
+          slot: tempHardwareData[hardwareSysId].slot,
+          url: tempHardwareData[hardwareSysId].url,
+        };
       }
       if (category === 'pdu') {
         outputData[sysIdRack].pdu[hardwareSysId] = {
