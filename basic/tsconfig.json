@@ -6,6 +6,6 @@
         "lib": ["esnext","dom"]
     },
     "files" : [
-      "code.ts"
+      "basic.ts"
     ]
 }
