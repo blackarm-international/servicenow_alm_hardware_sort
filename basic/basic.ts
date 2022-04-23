@@ -64,6 +64,7 @@ interface Rack {
 const rackSysIdList: Array<string> = [
   'c2ea8b2edb151f80a9885205dc9619d9',
   '3abaa3f4db271788259e5898dc9619ab',
+  '17cb27f8db271788259e5898dc96197e',
 ];
 // @ts-ignore
 const site = gs.getProperty('glide.servlet.uri');
