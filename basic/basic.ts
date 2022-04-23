@@ -17,7 +17,7 @@ interface Model {
   modelName: null | string;
   rackUnits: null | number;
 }
-// smaller datastructures using data from Hardware, but with excess removed
+// bad data that did not match any other category
 interface BadData {
   displayName: null | string;
   modelCategoryName: null | string;
@@ -27,16 +27,19 @@ interface BadData {
   slot: null | number;
   url: null | string;
 }
+// a line card is a network device that is parented to a rack mounted object
 interface LineCard {
   displayName: null | string;
   modelName: null | string;
   url: null | string;
 }
+// a pdu that is in the rack, but not mounted in a unit
 interface Pdu {
   displayName: null | string;
   modelName: null | string;
   url: null | string;
 }
+// a device that is mounted in a rack unit. may contain sleds or line cards.
 interface RackMounted {
   displayName: null | string;
   lineCards: Record<string, LineCard>;
@@ -47,6 +50,7 @@ interface RackMounted {
   sleds: Record<string, Sled>;
   url: null | string;
 }
+// a sled that is parented to a rackmounted object
 interface Sled {
   displayName: null | string;
   modelName: null | string;
@@ -60,15 +64,16 @@ interface Rack {
   rackMounted: Record<string, RackMounted>;
   rackName: null | string;
 }
-// global variables
+// a list of rack sys_ids that will be used to search alm_hardware
 const rackSysIdList: Array<string> = [
   'c2ea8b2edb151f80a9885205dc9619d9',
   '3abaa3f4db271788259e5898dc9619ab',
   '17cb27f8db271788259e5898dc96197e',
 ];
+// used to create urls in the data
 // @ts-ignore
 const site = gs.getProperty('glide.servlet.uri');
-// functions
+//
 const hasKey = (testObject: any, keyString: any) => {
   return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
@@ -218,7 +223,9 @@ const sortHardware = (
       tempModelData,
     );
     sysIdRack = tempHardwareData[hardwareSysId].rackSysId;
+    // this if statement is just a formality. all hardware should have a rack sys_id
     if (sysIdRack !== null) {
+      // if this is the first time this rack is encountered, create the object ready
       if (!hasKey(outputData, sysIdRack)) {
         outputData[sysIdRack] = {
           badData: {},
@@ -227,6 +234,7 @@ const sortHardware = (
           rackName: tempHardwareData[hardwareSysId].rackName,
         };
       }
+      // badData has quite a lot of visible data, to help see the problem
       if (category === 'badData') {
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
@@ -238,6 +246,7 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
       }
+      // these are pdus that are in the rack, but not mounted
       if (category === 'pdu') {
         outputData[sysIdRack].pdu[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
@@ -245,6 +254,8 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
       }
+      // these are anything that is mounted in a unit in the rack
+      // they contain linecards and sleds objects, these will be filled later
       if (category === 'rackMounted') {
         outputData[sysIdRack].rackMounted[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
@@ -258,6 +269,7 @@ const sortHardware = (
         };
       }
       // linecards are stored with all Hardware data, but will be slimmed down later
+      // when they are parented to their rackMounted hardware
       if (category === 'lineCard') {
         tempLineCards[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
@@ -273,6 +285,7 @@ const sortHardware = (
         };
       }
       // sleds are stored with all Hardware data, but will be slimmed down later
+      // when they are parented to their rackMounted hardware
       if (category === 'sled') {
         tempSleds[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
@@ -289,25 +302,29 @@ const sortHardware = (
       }
     }
   });
-  // insert sleds
+  // assess sleds and either parent them to their chassis or store them in badData
   Object.keys(tempSleds).forEach((hardwareSysId) => {
     let validSled = false;
     let slot: null | number;
     sysIdParent = tempSleds[hardwareSysId].parent;
     sysIdRack = tempSleds[hardwareSysId].rackSysId;
+    // this is a formality. all hardware should have a rack sys_id
     if (sysIdRack !== null) {
+      // this is a formality. all sleds have already been checked for a parent
       if (sysIdParent !== null) {
+        // check that the rack already exists in outputData
         if (hasKey(outputData, sysIdRack)) {
+          // check that the sleds parent exists in the racks rackMounted
           if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-            // sleds can not have a slot value less than one
-            // sleds can not have a slot value greater than the chassis u_max_children
             maxChildren = outputData[sysIdRack].rackMounted[sysIdParent].maxChildren;
             slot = tempSleds[hardwareSysId].slot;
             // sleds can only be parented to a rackmounted object with a valid u_max_children value
             if (maxChildren !== null) {
               // slot value must be valid
               if (slot !== null && slot > 0 && slot <= maxChildren) {
+                // set this to true so that it is not stored in badData
                 validSled = true;
+                // parent the sled to its chassis
                 outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
                   displayName: tempSleds[hardwareSysId].displayName,
                   modelName: tempSleds[hardwareSysId].modelName,
@@ -320,6 +337,7 @@ const sortHardware = (
         }
       }
       if (validSled === false) {
+        // this sled failed one of the above tests, so store it in the rack's badData
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempSleds[hardwareSysId].displayName,
           modelCategoryName: tempSleds[hardwareSysId].modelCategoryName,
@@ -332,16 +350,22 @@ const sortHardware = (
       }
     }
   });
-  // insert line cards
+  // assess line cards and either parent them to rackMounted hardware or store them in badData
   Object.keys(tempLineCards).forEach((hardwareSysId) => {
     let validLineCard = false;
     sysIdParent = tempLineCards[hardwareSysId].parent;
     sysIdRack = tempLineCards[hardwareSysId].rackSysId;
+    // this is a formality. all hardware should have a rack sys_id
     if (sysIdRack !== null) {
+      // this is a formality. all line cards have already been checked for a parent
       if (sysIdParent !== null) {
+        // check that the rack already exists in outputData
         if (hasKey(outputData, sysIdRack)) {
+          // check that the sleds parent exists in the racks rackMounted
           if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+            // set this to true so it does not get stored in badData
             validLineCard = true;
+            // parent the line card to the rackMounted hardware
             outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
               displayName: tempLineCards[hardwareSysId].displayName,
               modelName: tempLineCards[hardwareSysId].modelName,
@@ -351,6 +375,7 @@ const sortHardware = (
         }
       }
       if (validLineCard === false) {
+        // this line card failed one of the above tests, so store it in the rack's badData
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempLineCards[hardwareSysId].displayName,
           modelCategoryName: tempLineCards[hardwareSysId].modelCategoryName,
@@ -382,6 +407,8 @@ const main = (
     grHardware.addQuery('u_rack', 'IN', sysIdRackList);
     grHardware.query();
     while (grHardware.next()) {
+      // use an object with all fields set to null as default. these null values will only be
+      // replaced if the data from servicenow passes rigorous tests
       tempHardware = {
         displayName: null,
         modelCategoryName: null,
@@ -413,6 +440,7 @@ const main = (
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.modelSysId = testData;
+          // collect unique model sys_ids for the next query
           modelSysIdUnique[testData] = true;
         }
       }
@@ -447,7 +475,7 @@ const main = (
       if (!isNaN(parseInt(testData, 10))) {
         tempHardware.slot = parseInt(testData, 10);
       }
-      //
+      // modelName is null for now, but later will be combined with the data from cmdb_model
       hardwareData[grHardware.getUniqueValue()] = {
         displayName: tempHardware.displayName,
         modelCategoryName: tempHardware.modelCategoryName,
@@ -469,6 +497,8 @@ const main = (
     grModel.addQuery('sys_id', 'IN', modelSysIdList);
     grModel.query();
     while (grModel.next()) {
+      // use an object with all fields set to null as default. these null values will only be
+      // replaced if the data from servicenow passes rigorous tests
       tempModel = {
         maxChildren: null,
         modelName: null,
