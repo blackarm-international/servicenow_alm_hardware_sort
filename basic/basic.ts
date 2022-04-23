@@ -77,6 +77,7 @@ const site = gs.getProperty('glide.servlet.uri');
 const hasKey = (testObject: any, keyString: any) => {
   return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
+// test whether hardware is a valid sled
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -101,6 +102,7 @@ const testValidChassisSled = (
   // all tests passed
   return true;
 };
+// test whether hardware is a valid rack mounted object
 const testValidRackMounted = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -138,6 +140,7 @@ const testValidRackMounted = (
   // all tests passed
   return true;
 };
+// test whether hardware is a valid line card
 const testValidLineCard = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -162,6 +165,7 @@ const testValidLineCard = (
   // all tests passed
   return true;
 };
+// test whether hardware is a pdu
 const testValidPdu = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -174,6 +178,7 @@ const testValidPdu = (
   // all tests passed
   return true;
 };
+// sort hardware into different categories and return an identifing string
 const findCategory = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -191,8 +196,10 @@ const findCategory = (
   if (testValidPdu(hardwareSysId, tempHardwareData)) {
     return 'pdu';
   }
+  // if the hardware failed all of the test then it ends up in badData
   return 'badData';
 };
+// this builds the nested data
 const sortHardware = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
@@ -206,6 +213,7 @@ const sortHardware = (
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
+  // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
     // get relevant model data
     maxChildren = null;
@@ -217,6 +225,7 @@ const sortHardware = (
         modelName = tempModelData[modelSysId].modelName;
       }
     }
+    // sort the hardware into one of the categories
     category = findCategory(
       hardwareSysId,
       tempHardwareData,
