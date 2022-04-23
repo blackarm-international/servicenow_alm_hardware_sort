@@ -56,7 +56,7 @@ var testValidRackMounted = function (hardwareSysId, tempHardwareData, tempModelD
     // all tests passed
     return true;
 };
-var testValidNetworkGear = function (hardwareSysId, tempHardwareData) {
+var testValidLineCard = function (hardwareSysId, tempHardwareData) {
     var tempHardware = tempHardwareData[hardwareSysId];
     // needs a parent sys_id
     if (tempHardware.parent === null) {
@@ -91,54 +91,121 @@ var findCategory = function (hardwareSysId, tempHardwareData, tempModelData) {
         return 'sled';
     }
     if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
-        return 'rack_mounted';
+        return 'rackMounted';
     }
-    if (testValidNetworkGear(hardwareSysId, tempHardwareData)) {
-        return 'network_gear';
+    if (testValidLineCard(hardwareSysId, tempHardwareData)) {
+        return 'lineCard';
     }
     if (testValidPdu(hardwareSysId, tempHardwareData)) {
         return 'pdu';
     }
-    return 'bad_data';
+    return 'badData';
 };
 var sortHardware = function (tempHardwareData, tempModelData) {
     var category;
     var outputData = {};
-    var tempRackName;
+    var modelName;
+    var modelSysId;
+    var tempLineCards = {};
+    var tempSleds = {};
+    var sysIdParent;
+    var sysIdRack;
     Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
+        modelName = null;
+        modelSysId = tempHardwareData[hardwareSysId].modelSysId;
+        if (modelSysId !== null) {
+            if (hasKey(tempModelData, modelSysId)) {
+                modelName = tempModelData[modelSysId].modelName;
+            }
+        }
         category = findCategory(hardwareSysId, tempHardwareData, tempModelData);
-        tempRackName = tempHardwareData[hardwareSysId].rackName;
-        if (tempRackName !== null) {
-            if (!hasKey(outputData, tempRackName)) {
-                outputData[tempRackName] = {
-                    'bad_data': {},
-                    'network_gear': {},
-                    'pdu': {},
-                    'rack_mounted': {},
-                    'sled': {},
+        sysIdRack = tempHardwareData[hardwareSysId].rackSysId;
+        if (sysIdRack !== null) {
+            if (!hasKey(outputData, sysIdRack)) {
+                outputData[sysIdRack] = {
+                    badData: {},
+                    pdu: {},
+                    rackMounted: {},
+                    rackName: tempHardwareData[hardwareSysId].rackName,
                 };
             }
-            if (category === 'bad_data') {
-                outputData[tempRackName].bad_data[hardwareSysId] = tempHardwareData[hardwareSysId];
-            }
-            if (category === 'network_gear') {
-                outputData[tempRackName].network_gear[hardwareSysId] = tempHardwareData[hardwareSysId];
+            if (category === 'badData') {
+                outputData[sysIdRack].badData[hardwareSysId] = tempHardwareData[hardwareSysId];
             }
             if (category === 'pdu') {
-                outputData[tempRackName].pdu[hardwareSysId] = tempHardwareData[hardwareSysId];
+                outputData[sysIdRack].pdu[hardwareSysId] = {
+                    modelName: modelName,
+                };
             }
-            if (category === 'rack_mounted') {
-                outputData[tempRackName].rack_mounted[hardwareSysId] = tempHardwareData[hardwareSysId];
+            if (category === 'rackMounted') {
+                outputData[sysIdRack].rackMounted[hardwareSysId] = {
+                    lineCards: {},
+                    modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
+                    modelName: modelName,
+                    rackU: tempHardwareData[hardwareSysId].rackU,
+                    sleds: {},
+                };
+            }
+            // data that will need to be inserted after the loop completes
+            if (category === 'lineCard') {
+                tempLineCards[hardwareSysId] = {
+                    modelCategoryName: null,
+                    modelName: modelName,
+                    modelSysId: null,
+                    parent: tempHardwareData[hardwareSysId].parent,
+                    rackName: null,
+                    rackSysId: tempHardwareData[hardwareSysId].rackSysId,
+                    rackU: null,
+                    slot: null,
+                };
             }
             if (category === 'sled') {
-                outputData[tempRackName].sled[hardwareSysId] = tempHardwareData[hardwareSysId];
+                tempSleds[hardwareSysId] = {
+                    modelCategoryName: null,
+                    modelName: modelName,
+                    modelSysId: null,
+                    parent: tempHardwareData[hardwareSysId].parent,
+                    rackName: null,
+                    rackSysId: tempHardwareData[hardwareSysId].rackSysId,
+                    rackU: null,
+                    slot: tempHardwareData[hardwareSysId].slot,
+                };
+            }
+        }
+    });
+    // insert sleds
+    Object.keys(tempSleds).forEach(function (hardwareSysId) {
+        sysIdParent = tempSleds[hardwareSysId].parent;
+        sysIdRack = tempSleds[hardwareSysId].rackSysId;
+        if (sysIdParent !== null && sysIdRack !== null) {
+            if (hasKey(outputData, sysIdRack)) {
+                if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+                    outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+                        modelName: tempSleds[hardwareSysId].modelName,
+                        slot: tempSleds[hardwareSysId].slot,
+                    };
+                }
+            }
+        }
+    });
+    // insert line cards
+    Object.keys(tempLineCards).forEach(function (hardwareSysId) {
+        sysIdParent = tempLineCards[hardwareSysId].parent;
+        sysIdRack = tempLineCards[hardwareSysId].rackSysId;
+        if (sysIdParent !== null && sysIdRack !== null) {
+            if (hasKey(outputData, sysIdRack)) {
+                if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+                    outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
+                        modelName: tempLineCards[hardwareSysId].modelName,
+                    };
+                }
             }
         }
     });
     // @ts-ignore
     gs.print(JSON.stringify(outputData, null, 2));
 };
-var main = function (tempRackSysIdList) {
+var main = function (sysIdRackList) {
     var hardwareData = {};
     var modelData = {};
     var modelSysIdUnique = {};
@@ -146,14 +213,15 @@ var main = function (tempRackSysIdList) {
     var tempHardware;
     var tempModel;
     var testData;
-    if (tempRackSysIdList.length !== 0) {
+    if (sysIdRackList.length !== 0) {
         // @ts-ignore
         var grHardware = new GlideRecord('alm_hardware');
-        grHardware.addQuery('u_rack', 'IN', tempRackSysIdList);
+        grHardware.addQuery('u_rack', 'IN', sysIdRackList);
         grHardware.query();
         while (grHardware.next()) {
             tempHardware = {
                 modelCategoryName: null,
+                modelName: null,
                 modelSysId: null,
                 parent: null,
                 rackName: null,
@@ -210,6 +278,7 @@ var main = function (tempRackSysIdList) {
             //
             hardwareData[grHardware.getUniqueValue()] = {
                 modelCategoryName: tempHardware.modelCategoryName,
+                modelName: null,
                 modelSysId: tempHardware.modelSysId,
                 parent: tempHardware.parent,
                 rackName: tempHardware.rackName,
@@ -227,8 +296,16 @@ var main = function (tempRackSysIdList) {
         grModel.query();
         while (grModel.next()) {
             tempModel = {
+                modelName: null,
                 rackUnits: null,
             };
+            //
+            testData = grModel.getValue('display_name');
+            if (typeof testData === 'string') {
+                if (testData !== '') {
+                    tempModel.modelName = testData;
+                }
+            }
             //
             testData = grModel.getValue('rack_units');
             if (!isNaN(parseInt(testData, 10))) {
@@ -236,6 +313,7 @@ var main = function (tempRackSysIdList) {
             }
             //
             modelData[grModel.getUniqueValue()] = {
+                modelName: tempModel.modelName,
                 rackUnits: tempModel.rackUnits,
             };
         }

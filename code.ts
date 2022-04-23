@@ -1,5 +1,7 @@
+// this is the default for hardware before it is sorted into smaller datastructures
 interface Hardware {
   modelCategoryName: null | string;
+  modelName: null | string;
   modelSysId: null | string;
   parent: null | string;
   rackName: null | string;
@@ -7,7 +9,33 @@ interface Hardware {
   rackU: null | number;
   slot: null | number;
 }
+// smaller datastructures based on Hardware, but with excess data removed
+interface LineCard {
+  modelName: null | string;
+}
+interface Pdu {
+  modelName: null | string;
+}
+interface RackMounted {
+  lineCards: Record<string, LineCard>;
+  modelCategoryName: null | string;
+  modelName: null | string;
+  rackU: null | number;
+  sleds: Record<string, Sled>;
+}
+interface Sled {
+  modelName: null | string;
+  slot: null | number;
+}
+// the rack
+interface Rack {
+  badData: Record<string, Hardware>;
+  pdu: Record<string, Pdu>;
+  rackMounted: Record<string, RackMounted>;
+  rackName: null | string;
+}
 interface Model {
+  modelName: null | string;
   rackUnits: null | number;
 }
 
@@ -75,7 +103,7 @@ const testValidRackMounted = (
   // all tests passed
   return true;
 };
-const testValidNetworkGear = (
+const testValidLineCard = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
 ) => {
@@ -120,54 +148,121 @@ const findCategory = (
     return 'sled';
   }
   if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
-    return 'rack_mounted';
+    return 'rackMounted';
   }
-  if (testValidNetworkGear(hardwareSysId, tempHardwareData)) {
-    return 'network_gear';
+  if (testValidLineCard(hardwareSysId, tempHardwareData)) {
+    return 'lineCard';
   }
   if (testValidPdu(hardwareSysId, tempHardwareData)) {
     return 'pdu';
   }
-  return 'bad_data';
+  return 'badData';
 };
 const sortHardware = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
 ) => {
   let category: string;
-  let outputData: Record<string, Record<string, Record<string, Hardware>>> = {};
-  let tempRackName: null | string;
+  let outputData: Record<string, Rack> = {};
+  let modelName: null | string;
+  let modelSysId: null | string;
+  let tempLineCards: Record<string, Hardware> = {};
+  let tempSleds: Record<string, Hardware> = {};
+  let sysIdParent: null | string;
+  let sysIdRack: null | string;
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
+    modelName = null;
+    modelSysId = tempHardwareData[hardwareSysId].modelSysId;
+    if (modelSysId !== null) {
+      if (hasKey(tempModelData, modelSysId)) {
+        modelName = tempModelData[modelSysId].modelName;
+      }
+    }
     category = findCategory(
       hardwareSysId,
       tempHardwareData,
       tempModelData,
     );
-    tempRackName = tempHardwareData[hardwareSysId].rackName;
-    if (tempRackName !== null) {
-      if (!hasKey(outputData, tempRackName)) {
-        outputData[tempRackName] = {
-          'bad_data': {},
-          'network_gear': {},
-          'pdu': {},
-          'rack_mounted': {},
-          'sled': {},
+    sysIdRack = tempHardwareData[hardwareSysId].rackSysId;
+    if (sysIdRack !== null) {
+      if (!hasKey(outputData, sysIdRack)) {
+        outputData[sysIdRack] = {
+          badData: {},
+          pdu: {},
+          rackMounted: {},
+          rackName: tempHardwareData[hardwareSysId].rackName,
         };
       }
-      if (category === 'bad_data') {
-        outputData[tempRackName].bad_data[hardwareSysId] = tempHardwareData[hardwareSysId];
-      }
-      if (category === 'network_gear') {
-        outputData[tempRackName].network_gear[hardwareSysId] = tempHardwareData[hardwareSysId];
+      if (category === 'badData') {
+        outputData[sysIdRack].badData[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
       if (category === 'pdu') {
-        outputData[tempRackName].pdu[hardwareSysId] = tempHardwareData[hardwareSysId];
+        outputData[sysIdRack].pdu[hardwareSysId] = {
+          modelName,
+        };
       }
-      if (category === 'rack_mounted') {
-        outputData[tempRackName].rack_mounted[hardwareSysId] = tempHardwareData[hardwareSysId];
+      if (category === 'rackMounted') {
+        outputData[sysIdRack].rackMounted[hardwareSysId] = {
+          lineCards: {},
+          modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
+          modelName,
+          rackU: tempHardwareData[hardwareSysId].rackU,
+          sleds: {},
+        };
+      }
+      // data that will need to be inserted after the loop completes
+      if (category === 'lineCard') {
+        tempLineCards[hardwareSysId] = {
+          modelCategoryName: null,
+          modelName,
+          modelSysId: null,
+          parent: tempHardwareData[hardwareSysId].parent,
+          rackName: null,
+          rackSysId: tempHardwareData[hardwareSysId].rackSysId,
+          rackU: null,
+          slot: null,
+        };
       }
       if (category === 'sled') {
-        outputData[tempRackName].sled[hardwareSysId] = tempHardwareData[hardwareSysId];
+        tempSleds[hardwareSysId] = {
+          modelCategoryName: null,
+          modelName,
+          modelSysId: null,
+          parent: tempHardwareData[hardwareSysId].parent,
+          rackName: null,
+          rackSysId: tempHardwareData[hardwareSysId].rackSysId,
+          rackU: null,
+          slot: tempHardwareData[hardwareSysId].slot,
+        };
+      }
+    }
+  });
+  // insert sleds
+  Object.keys(tempSleds).forEach((hardwareSysId) => {
+    sysIdParent = tempSleds[hardwareSysId].parent;
+    sysIdRack = tempSleds[hardwareSysId].rackSysId;
+    if (sysIdParent !== null && sysIdRack !== null) {
+      if (hasKey(outputData, sysIdRack)) {
+        if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+          outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+            modelName: tempSleds[hardwareSysId].modelName,
+            slot: tempSleds[hardwareSysId].slot,
+          };
+        }
+      }
+    }
+  });
+  // insert line cards
+  Object.keys(tempLineCards).forEach((hardwareSysId) => {
+    sysIdParent = tempLineCards[hardwareSysId].parent;
+    sysIdRack = tempLineCards[hardwareSysId].rackSysId;
+    if (sysIdParent !== null && sysIdRack !== null) {
+      if (hasKey(outputData, sysIdRack)) {
+        if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
+          outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
+            modelName: tempLineCards[hardwareSysId].modelName,
+          };
+        }
       }
     }
   });
@@ -175,7 +270,7 @@ const sortHardware = (
   gs.print(JSON.stringify(outputData, null, 2));
 };
 const main = (
-  tempRackSysIdList: Array<string>,
+  sysIdRackList: Array<string>,
 ) => {
   let hardwareData: Record<string, Hardware> = {};
   let modelData: Record<string, Model> = {};
@@ -184,14 +279,15 @@ const main = (
   let tempHardware: Hardware;
   let tempModel: Model;
   let testData: any;
-  if (tempRackSysIdList.length !== 0) {
+  if (sysIdRackList.length !== 0) {
     // @ts-ignore
     const grHardware = new GlideRecord('alm_hardware');
-    grHardware.addQuery('u_rack', 'IN', tempRackSysIdList);
+    grHardware.addQuery('u_rack', 'IN', sysIdRackList);
     grHardware.query();
     while (grHardware.next()) {
       tempHardware = {
         modelCategoryName: null,
+        modelName: null,
         modelSysId: null,
         parent: null,
         rackName: null,
@@ -248,6 +344,7 @@ const main = (
       //
       hardwareData[grHardware.getUniqueValue()] = {
         modelCategoryName: tempHardware.modelCategoryName,
+        modelName: null,
         modelSysId: tempHardware.modelSysId,
         parent: tempHardware.parent,
         rackName: tempHardware.rackName,
@@ -265,8 +362,16 @@ const main = (
     grModel.query();
     while (grModel.next()) {
       tempModel = {
+        modelName: null,
         rackUnits: null,
       };
+      //
+      testData = grModel.getValue('display_name');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempModel.modelName = testData;
+        }
+      }
       //
       testData = grModel.getValue('rack_units');
       if (!isNaN(parseInt(testData, 10))) {
@@ -274,6 +379,7 @@ const main = (
       }
       //
       modelData[grModel.getUniqueValue()] = {
+        modelName: tempModel.modelName,
         rackUnits: tempModel.rackUnits,
       };
     }
