@@ -17,7 +17,7 @@ interface Model {
   modelName: null | string;
   rackUnits: null | number;
 }
-// smaller datastructures based on Hardware, but with excess data removed
+// smaller datastructures using data from Hardware, but with excess removed
 interface BadData {
   displayName: null | string;
   modelCategoryName: null | string;
@@ -212,7 +212,6 @@ const sortHardware = (
         modelName = tempModelData[modelSysId].modelName;
       }
     }
-
     category = findCategory(
       hardwareSysId,
       tempHardwareData,
