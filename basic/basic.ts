@@ -1,5 +1,6 @@
 // this is the default for hardware before it is sorted into smaller datastructures
 interface Hardware {
+  displayName: null | string;
   modelCategoryName: null | string;
   modelName: null | string;
   modelSysId: null | string;
@@ -8,24 +9,33 @@ interface Hardware {
   rackSysId: null | string;
   rackU: null | number;
   slot: null | number;
+  url: null | string;
 }
 // smaller datastructures based on Hardware, but with excess data removed
 interface LineCard {
+  displayName: null | string;
   modelName: null | string;
+  url: null | string;
 }
 interface Pdu {
+  displayName: null | string;
   modelName: null | string;
+  url: null | string;
 }
 interface RackMounted {
+  displayName: null | string;
   lineCards: Record<string, LineCard>;
   modelCategoryName: null | string;
   modelName: null | string;
   rackU: null | number;
   sleds: Record<string, Sled>;
+  url: null | string;
 }
 interface Sled {
+  displayName: null | string;
   modelName: null | string;
   slot: null | number;
+  url: null | string;
 }
 // the rack
 interface Rack {
@@ -38,7 +48,14 @@ interface Model {
   modelName: null | string;
   rackUnits: null | number;
 }
-
+// global variables
+const rackSysIdList: Array<string> = [
+  'c2ea8b2edb151f80a9885205dc9619d9',
+  '3abaa3f4db271788259e5898dc9619ab',
+];
+// @ts-ignore
+const site = gs.getProperty('glide.servlet.uri');
+// functions
 const hasKey = (testObject: any, keyString: any) => {
   return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
@@ -198,21 +215,26 @@ const sortHardware = (
       }
       if (category === 'pdu') {
         outputData[sysIdRack].pdu[hardwareSysId] = {
+          displayName: tempHardwareData[hardwareSysId].displayName,
           modelName,
+          url: tempHardwareData[hardwareSysId].url,
         };
       }
       if (category === 'rackMounted') {
         outputData[sysIdRack].rackMounted[hardwareSysId] = {
+          displayName: tempHardwareData[hardwareSysId].displayName,
           lineCards: {},
           modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
           modelName,
           rackU: tempHardwareData[hardwareSysId].rackU,
           sleds: {},
+          url: tempHardwareData[hardwareSysId].url,
         };
       }
-      // data that will need to be inserted after the loop completes
+      // linecards are stored with all Hardware data, but will be slimmed down later
       if (category === 'lineCard') {
         tempLineCards[hardwareSysId] = {
+          displayName: tempHardwareData[hardwareSysId].displayName,
           modelCategoryName: null,
           modelName,
           modelSysId: null,
@@ -221,10 +243,13 @@ const sortHardware = (
           rackSysId: tempHardwareData[hardwareSysId].rackSysId,
           rackU: null,
           slot: null,
+          url: tempHardwareData[hardwareSysId].url,
         };
       }
+      // sleds are stored with all Hardware data, but will be slimmed down later
       if (category === 'sled') {
         tempSleds[hardwareSysId] = {
+          displayName: tempHardwareData[hardwareSysId].displayName,
           modelCategoryName: null,
           modelName,
           modelSysId: null,
@@ -233,6 +258,7 @@ const sortHardware = (
           rackSysId: tempHardwareData[hardwareSysId].rackSysId,
           rackU: null,
           slot: tempHardwareData[hardwareSysId].slot,
+          url: tempHardwareData[hardwareSysId].url,
         };
       }
     }
@@ -245,8 +271,10 @@ const sortHardware = (
       if (hasKey(outputData, sysIdRack)) {
         if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
           outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+            displayName: tempSleds[hardwareSysId].displayName,
             modelName: tempSleds[hardwareSysId].modelName,
             slot: tempSleds[hardwareSysId].slot,
+            url: tempSleds[hardwareSysId].url,
           };
         }
       }
@@ -260,7 +288,9 @@ const sortHardware = (
       if (hasKey(outputData, sysIdRack)) {
         if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
           outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
+            displayName: tempLineCards[hardwareSysId].displayName,
             modelName: tempLineCards[hardwareSysId].modelName,
+            url: tempLineCards[hardwareSysId].url,
           };
         }
       }
@@ -286,6 +316,7 @@ const main = (
     grHardware.query();
     while (grHardware.next()) {
       tempHardware = {
+        displayName: null,
         modelCategoryName: null,
         modelName: null,
         modelSysId: null,
@@ -294,7 +325,15 @@ const main = (
         rackSysId: null,
         rackU: null,
         slot: null,
+        url: null,
       };
+      //
+      testData = grHardware.getDisplayValue('display_name');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.displayName = testData;
+        }
+      }
       //
       testData = grHardware.getDisplayValue('model_category');
       if (typeof testData === 'string') {
@@ -343,6 +382,7 @@ const main = (
       }
       //
       hardwareData[grHardware.getUniqueValue()] = {
+        displayName: tempHardware.displayName,
         modelCategoryName: tempHardware.modelCategoryName,
         modelName: null,
         modelSysId: tempHardware.modelSysId,
@@ -351,6 +391,7 @@ const main = (
         rackSysId: tempHardware.rackSysId,
         rackU: tempHardware.rackU,
         slot: tempHardware.slot,
+        url: `${site}/alm_hardware.do?sys_id=${grHardware.getUniqueValue()}`,
       };
     }
   }
@@ -390,6 +431,4 @@ const main = (
   );
 };
 //
-var rackSysIdString = 'c2ea8b2edb151f80a9885205dc9619d9,3abaa3f4db271788259e5898dc9619ab';
-const rackSysIdList = rackSysIdString.split(',');
 main(rackSysIdList);
