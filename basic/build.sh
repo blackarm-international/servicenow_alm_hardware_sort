@@ -9,7 +9,7 @@ fi
 echo
 #
 echo "transpiling basic.ts"
-if tsc
+if npx tsc
 then
   echo "done"
 else
