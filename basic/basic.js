@@ -494,7 +494,7 @@ var main = function (sysIdRackList) {
                 serialNumber: tempHardware.serialNumber,
                 slot: tempHardware.slot,
                 substatus: tempHardware.substatus,
-                url: site + "/alm_hardware.do?sys_id=" + grHardware.getUniqueValue(),
+                url: "".concat(site, "/alm_hardware.do?sys_id=").concat(grHardware.getUniqueValue()),
             };
         }
     }
