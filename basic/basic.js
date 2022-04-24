@@ -203,24 +203,11 @@ var sortHardware = function (tempHardwareData, tempModelData) {
             }
             if (category === 'rackMounted') {
                 outputData[sysIdRack].rackMounted[hardwareSysId] = {
-                    assetTag: tempHardwareData[hardwareSysId].assetTag,
-                    ciSysId: tempHardwareData[hardwareSysId].ciSysId,
-                    ciName: tempHardwareData[hardwareSysId].ciName,
                     displayName: tempHardwareData[hardwareSysId].displayName,
-                    hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
-                    installStatus: tempHardwareData[hardwareSysId].installStatus,
-                    lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
                     lineCards: {},
-                    location: tempHardwareData[hardwareSysId].location,
                     maxChildren: maxChildren,
-                    modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
                     modelName: tempHardwareData[hardwareSysId].modelCategoryName,
-                    modelSysId: tempHardwareData[hardwareSysId].modelSysId,
-                    provisionId: tempHardwareData[hardwareSysId].provisionId,
-                    rackU: tempHardwareData[hardwareSysId].rackU,
-                    serialNumber: tempHardwareData[hardwareSysId].serialNumber,
                     sleds: {},
-                    substatus: tempHardwareData[hardwareSysId].substatus,
                     url: tempHardwareData[hardwareSysId].url,
                 };
             }
@@ -251,21 +238,9 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                         validSled = true;
                         // parent the sled to its chassis
                         outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
-                            assetTag: tempHardwareData[hardwareSysId].assetTag,
-                            ciSysId: tempHardwareData[hardwareSysId].ciSysId,
-                            ciName: tempHardwareData[hardwareSysId].ciName,
                             displayName: tempSleds[hardwareSysId].displayName,
-                            hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
-                            installStatus: tempHardwareData[hardwareSysId].installStatus,
-                            lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
-                            location: tempHardwareData[hardwareSysId].location,
-                            modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
                             modelName: tempSleds[hardwareSysId].modelName,
-                            modelSysId: tempHardwareData[hardwareSysId].modelSysId,
-                            provisionId: tempHardwareData[hardwareSysId].provisionId,
-                            serialNumber: tempHardwareData[hardwareSysId].serialNumber,
                             slot: tempSleds[hardwareSysId].slot,
-                            substatus: tempHardwareData[hardwareSysId].substatus,
                             url: tempSleds[hardwareSysId].url,
                         };
                     }
@@ -326,7 +301,9 @@ var sortHardware = function (tempHardwareData, tempModelData) {
     gs.print(JSON.stringify(outputData, null, 2));
 };
 var main = function (sysIdRackList) {
+    var ciSysIdUnique = {};
     var hardwareData = {};
+    var hardwareSkuSysIdUnique = {};
     var modelData = {};
     var modelSysIdUnique = {};
     var modelSysIdList;
@@ -375,6 +352,7 @@ var main = function (sysIdRackList) {
             if (typeof testData === 'string') {
                 if (testData !== '') {
                     tempHardware.ciSysId = testData;
+                    ciSysIdUnique[testData] = true;
                 }
             }
             //
@@ -396,6 +374,7 @@ var main = function (sysIdRackList) {
             if (typeof testData === 'string') {
                 if (testData !== '') {
                     tempHardware.hardwareSkuSysId = testData;
+                    hardwareSkuSysIdUnique[testData] = true;
                 }
             }
             //

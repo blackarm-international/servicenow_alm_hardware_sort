@@ -1,4 +1,5 @@
-// data from alm_hardware
+// data from alm_hardware - a lot of this data will not be shown in the nested data, which will
+// only contain enough to analyse problems
 interface Hardware {
   assetTag: null | string;
   ciSysId: null | string;
@@ -51,43 +52,18 @@ interface Pdu {
 }
 // a device that is mounted in a rack unit. may contain sleds or line cards.
 interface RackMounted {
-  assetTag: null | string;
-  ciSysId: null | string;
-  ciName: null | string;
   displayName: null | string;
-  hardwareSkuSysId: null | string;
-  installStatus: null | string;
-  lastPhysicalAudit: null | number;
   lineCards: Record<string, LineCard>;
-  location: null | string;
   maxChildren: null | number;
-  modelCategoryName: null | string;
   modelName: null | string;
-  modelSysId: null | string;
-  provisionId: null | string;
-  rackU: null | number;
-  serialNumber: null | string;
   sleds: Record<string, Sled>;
-  substatus: null | string;
   url: null | string;
 }
 // a sled that is parented to a rackmounted object
 interface Sled {
-  assetTag: null | string;
-  ciSysId: null | string;
-  ciName: null | string;
   displayName: null | string;
-  hardwareSkuSysId: null | string;
-  installStatus: null | string;
-  lastPhysicalAudit: null | number;
-  location: null | string;
-  modelCategoryName: null | string;
   modelName: null | string;
-  modelSysId: null | string;
-  provisionId: null | string;
-  serialNumber: null | string;
   slot: null | number;
-  substatus: null | string;
   url: null | string;
 }
 // the rack
@@ -144,7 +120,7 @@ const testValidChassisSled = (
   if (tempModelSysId === null) {
     return false;
   } else {
-    // parent has a model
+    // model sys_id exists in model data
     if (!hasKey(tempModelData, tempModelSysId)) {
       return false;
     } else {
@@ -323,24 +299,11 @@ const sortHardware = (
       }
       if (category === 'rackMounted') {
         outputData[sysIdRack].rackMounted[hardwareSysId] = {
-          assetTag: tempHardwareData[hardwareSysId].assetTag,
-          ciSysId: tempHardwareData[hardwareSysId].ciSysId,
-          ciName: tempHardwareData[hardwareSysId].ciName,
           displayName: tempHardwareData[hardwareSysId].displayName,
-          hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
-          installStatus: tempHardwareData[hardwareSysId].installStatus,
-          lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
           lineCards: {},
-          location: tempHardwareData[hardwareSysId].location,
           maxChildren,
-          modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
           modelName: tempHardwareData[hardwareSysId].modelCategoryName,
-          modelSysId: tempHardwareData[hardwareSysId].modelSysId,
-          provisionId: tempHardwareData[hardwareSysId].provisionId,
-          rackU: tempHardwareData[hardwareSysId].rackU,
-          serialNumber: tempHardwareData[hardwareSysId].serialNumber,
           sleds: {},
-          substatus: tempHardwareData[hardwareSysId].substatus,
           url: tempHardwareData[hardwareSysId].url,
         };
       }
@@ -371,21 +334,9 @@ const sortHardware = (
             validSled = true;
             // parent the sled to its chassis
             outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
-              assetTag: tempHardwareData[hardwareSysId].assetTag,
-              ciSysId: tempHardwareData[hardwareSysId].ciSysId,
-              ciName: tempHardwareData[hardwareSysId].ciName,
               displayName: tempSleds[hardwareSysId].displayName,
-              hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
-              installStatus: tempHardwareData[hardwareSysId].installStatus,
-              lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
-              location: tempHardwareData[hardwareSysId].location,
-              modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
               modelName: tempSleds[hardwareSysId].modelName,
-              modelSysId: tempHardwareData[hardwareSysId].modelSysId,
-              provisionId: tempHardwareData[hardwareSysId].provisionId,
-              serialNumber: tempHardwareData[hardwareSysId].serialNumber,
               slot: tempSleds[hardwareSysId].slot,
-              substatus: tempHardwareData[hardwareSysId].substatus,
               url: tempSleds[hardwareSysId].url,
             };
           }
@@ -448,7 +399,9 @@ const sortHardware = (
 const main = (
   sysIdRackList: Array<string>,
 ) => {
+  let ciSysIdUnique: Record<string, boolean> = {};
   let hardwareData: Record<string, Hardware> = {};
+  let hardwareSkuSysIdUnique: Record<string, boolean> = {};
   let modelData: Record<string, Model> = {};
   let modelSysIdUnique: Record<string, boolean> = {};
   let modelSysIdList: Array<string>;
@@ -497,6 +450,7 @@ const main = (
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.ciSysId = testData;
+          ciSysIdUnique[testData] = true;
         }
       }
       //
@@ -518,6 +472,7 @@ const main = (
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.hardwareSkuSysId = testData;
+          hardwareSkuSysIdUnique[testData] = true;
         }
       }
       //
