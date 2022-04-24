@@ -60,6 +60,7 @@ interface RackMounted {
   lastPhysicalAudit: null | number;
   lineCards: Record<string, LineCard>;
   location: null | string;
+  maxChildren: null | number;
   modelCategoryName: null | string;
   modelName: null | string;
   modelSysId: null | string;
@@ -265,6 +266,8 @@ const sortHardware = (
   tempModelData: Record<string, Model>,
 ) => {
   let category: string;
+  let maxChildren: null | number;
+  let modelSysId: null | string;
   let outputData: Record<string, Rack> = {};
   let tempLineCards: Record<string, Hardware> = {};
   let tempSleds: Record<string, Hardware> = {};
@@ -272,6 +275,16 @@ const sortHardware = (
   let sysIdRack: null | string;
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
+    // get maxchildren from model data so it can be added to rackMounted
+    // sleds with slot values that exceed max children will end up in bad data
+    // so this needs to be visible in the nested data to understand why
+    maxChildren = null;
+    modelSysId = tempHardwareData[hardwareSysId].modelSysId;
+    if (modelSysId !== null) {
+      if (hasKey(tempModelData, modelSysId)) {
+        maxChildren = tempModelData[modelSysId].maxChildren;
+      }
+    }
     // sort the hardware into one of the categories
     category = findCategory(
       hardwareSysId,
@@ -319,6 +332,7 @@ const sortHardware = (
           lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
           lineCards: {},
           location: tempHardwareData[hardwareSysId].location,
+          maxChildren,
           modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
           modelName: tempHardwareData[hardwareSysId].modelCategoryName,
           modelSysId: tempHardwareData[hardwareSysId].modelSysId,

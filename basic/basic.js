@@ -150,6 +150,8 @@ var findCategory = function (hardwareSysId, tempHardwareData, tempModelData) {
 // this builds the nested data
 var sortHardware = function (tempHardwareData, tempModelData) {
     var category;
+    var maxChildren;
+    var modelSysId;
     var outputData = {};
     var tempLineCards = {};
     var tempSleds = {};
@@ -157,6 +159,16 @@ var sortHardware = function (tempHardwareData, tempModelData) {
     var sysIdRack;
     // loop through all of the hardware from alm_hardware
     Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
+        // get maxchildren from model data so it can be added to rackMounted
+        // sleds with slot values that exceed max children will end up in bad data
+        // so this needs to be visible in the nested data to understand why
+        maxChildren = null;
+        modelSysId = tempHardwareData[hardwareSysId].modelSysId;
+        if (modelSysId !== null) {
+            if (hasKey(tempModelData, modelSysId)) {
+                maxChildren = tempModelData[modelSysId].maxChildren;
+            }
+        }
         // sort the hardware into one of the categories
         category = findCategory(hardwareSysId, tempHardwareData, tempModelData);
         sysIdRack = tempHardwareData[hardwareSysId].rackSysId;
@@ -200,6 +212,7 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                     lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
                     lineCards: {},
                     location: tempHardwareData[hardwareSysId].location,
+                    maxChildren: maxChildren,
                     modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
                     modelName: tempHardwareData[hardwareSysId].modelCategoryName,
                     modelSysId: tempHardwareData[hardwareSysId].modelSysId,
@@ -393,10 +406,11 @@ var main = function (sysIdRackList) {
                 }
             }
             //
+            testData = grHardware.getValue('u_last_physical_audit');
             // @ts-ignore
-            testData = new GlideDateTime(grHardware.getValue('u_last_physical_audit')).getNumericValue();
-            if (testData !== 0) {
-                tempHardware.lastPhysicalAudit = testData;
+            if (new GlideDateTime(testData).getNumericValue() !== 0) {
+                // @ts-ignore
+                tempHardware.lastPhysicalAudit = new GlideDateTime(testData).getNumericValue();
             }
             //
             testData = grHardware.getDisplayValue('location');
