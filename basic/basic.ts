@@ -92,51 +92,19 @@ const hasKey = (testObject: any, keyString: any) => {
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
-  tempModelData: Record<string, Model>,
 ) => {
-  let tempModel: Model;
-  let tempModelSysId: null | string;
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a slot
   if (tempHardware.slot === null) {
     return false;
   }
-  // slot cannot be less than 1
+  // slot cannot be zero or negative
   if (tempHardware.slot !== null && tempHardware.slot < 1) {
     return false;
   }
   // needs a parent sys_id
   if (tempHardware.parent === null) {
     return false;
-  }
-  // parent needs to exist
-  if (!hasKey(tempHardwareData, tempHardware.parent)) {
-    return false;
-  }
-  // parent needs to be in the same rack
-  if (tempHardwareData[tempHardware.parent].rackSysId !== tempHardware.rackSysId) {
-    return false;
-  }
-  tempModelSysId = tempHardwareData[tempHardware.parent].modelSysId;
-  // parent has model sys_id
-  if (tempModelSysId === null) {
-    return false;
-  } else {
-    // model sys_id exists in model data
-    if (!hasKey(tempModelData, tempModelSysId)) {
-      return false;
-    } else {
-      tempModel = tempModelData[tempModelSysId];
-      // parent has a u_max_children value
-      if (tempModel.maxChildren === null) {
-        return false;
-      } else {
-        // slot value cannot exceed u_max_children
-        if (tempHardware.slot > tempModel.maxChildren) {
-          return false;
-        }
-      }
-    }
   }
   // all tests passed
   return true;
@@ -223,7 +191,7 @@ const findCategory = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
 ) => {
-  if (testValidChassisSled(hardwareSysId, tempHardwareData, tempModelData)) {
+  if (testValidChassisSled(hardwareSysId, tempHardwareData)) {
     return 'sled';
   }
   if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
@@ -309,19 +277,22 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
       }
+      // store data to be tested once all rackMounted objects are in place
       if (category === 'lineCard') {
         tempLineCards[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
+      // store data to be tested once all rackMounted objects are in place
       if (category === 'sled') {
         tempSleds[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
     }
   });
-  // sleds and line cards are put in place after everything else to make sure that the object
-  // they are parented to is in place. if the parent failed a test and is not in the final 
-  // data structure then its children end up in bad data
+  // process sleds
   Object.keys(tempSleds).forEach((hardwareSysId) => {
+    // assume this is not a sled until proved otherwise
     let validSled = false;
+    let testChassis: RackMounted;
+    let testSlot: null | number;
     sysIdParent = tempSleds[hardwareSysId].parent;
     sysIdRack = tempSleds[hardwareSysId].rackSysId;
     // this is a formality. all hardware should have a rack sys_id
@@ -332,15 +303,23 @@ const sortHardware = (
         if (hasKey(outputData, sysIdRack)) {
           // check that the sleds parent exists in the racks rackMounted
           if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-            // set this to true so that it is not stored in badData
-            validSled = true;
-            // parent the sled to its chassis
-            outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
-              displayName: tempSleds[hardwareSysId].displayName,
-              modelName: tempSleds[hardwareSysId].modelName,
-              slot: tempSleds[hardwareSysId].slot,
-              url: tempSleds[hardwareSysId].url,
-            };
+            // check the chassis has a u_max_children value
+            testChassis = outputData[sysIdRack].rackMounted[sysIdParent];
+            if (testChassis.maxChildren !== null) {
+              // check the slot value does not exceed u_max_children
+              testSlot = tempSleds[hardwareSysId].slot;
+              if (testSlot !== null &&  testSlot <= testChassis.maxChildren) {
+                // confirm this is a sled so that it is not stored in badData
+                validSled = true;
+                // parent the sled to its chassis
+                outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+                  displayName: tempSleds[hardwareSysId].displayName,
+                  modelName: tempSleds[hardwareSysId].modelName,
+                  slot: tempSleds[hardwareSysId].slot,
+                  url: tempSleds[hardwareSysId].url,
+                };
+              }
+            }
           }
         }
       }
@@ -358,7 +337,9 @@ const sortHardware = (
       }
     }
   });
+  // process line cards
   Object.keys(tempLineCards).forEach((hardwareSysId) => {
+    // assume this is not a line card until proved otherwise
     let validLineCard = false;
     sysIdParent = tempLineCards[hardwareSysId].parent;
     sysIdRack = tempLineCards[hardwareSysId].rackSysId;
@@ -370,7 +351,7 @@ const sortHardware = (
         if (hasKey(outputData, sysIdRack)) {
           // check that the sleds parent exists in the racks rackMounted
           if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-            // set this to true so it does not get stored in badData
+            // confirm this is a line card so it does not get stored in badData
             validLineCard = true;
             // parent the line card to the rackMounted hardware
             outputData[sysIdRack].rackMounted[sysIdParent].lineCards[hardwareSysId] = {
