@@ -24,8 +24,10 @@ interface Hardware {
 }
 // data from cmdb_model
 interface Model {
+  endOfSoftware: null | number;
+  endOfLife: null | number;
+  endOfSale: null | number;
   maxChildren: null | number;
-  modelName: null | string;
   rackUnits: null | number;
 }
 // bad data that did not match any other category or had a missing parent
@@ -606,21 +608,37 @@ const main = (
       // use an object with all fields set to null as default. these null values will only be
       // replaced if the data from servicenow passes rigorous tests
       tempModel = {
+        endOfLife: null,
+        endOfSale: null,
+        endOfSoftware: null,
         maxChildren: null,
-        modelName: null,
         rackUnits: null,
       };
+      //
+      testData = grModel.getValue('u_end_of_life_date');
+      // @ts-ignore
+      if (new GlideDateTime(testData).getNumericValue() !== 0) {
+        // @ts-ignore
+        tempModel.endOfLife = new GlideDateTime(testData).getNumericValue();
+      }
+      //
+      testData = grModel.getValue('u_end_of_sale_date');
+      // @ts-ignore
+      if (new GlideDateTime(testData).getNumericValue() !== 0) {
+        // @ts-ignore
+        tempModel.endOfSale = new GlideDateTime(testData).getNumericValue();
+      }
+      //
+      testData = grModel.getValue('u_end_of_software_maintenance_date');
+      // @ts-ignore
+      if (new GlideDateTime(testData).getNumericValue() !== 0) {
+        // @ts-ignore
+        tempModel.endOfSoftware = new GlideDateTime(testData).getNumericValue();
+      }
       //
       testData = grModel.getValue('u_max_children');
       if (!isNaN(parseInt(testData, 10))) {
         tempModel.maxChildren = parseInt(testData, 10);
-      }
-      //
-      testData = grModel.getValue('display_name');
-      if (typeof testData === 'string') {
-        if (testData !== '') {
-          tempModel.modelName = testData;
-        }
       }
       //
       testData = grModel.getValue('rack_units');
@@ -629,8 +647,10 @@ const main = (
       }
       //
       modelData[grModel.getUniqueValue()] = {
+        endOfLife: tempModel.endOfLife,
+        endOfSale: tempModel.endOfSale,
+        endOfSoftware: tempModel.endOfSoftware,
         maxChildren: tempModel.maxChildren,
-        modelName: tempModel.modelName,
         rackUnits: tempModel.rackUnits,
       };
     }
