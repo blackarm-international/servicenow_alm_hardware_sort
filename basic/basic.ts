@@ -1,14 +1,24 @@
 // data from alm_hardware
 interface Hardware {
+  assetTag: null | string;
+  ciSysId: null | string;
+  ciName: null | string;
   displayName: null | string;
+  hardwareSkuSysId: null | string;
+  installStatus: null | string;
+  lastPhysicalAudit: null | number;
+  location: null | string;
   modelCategoryName: null | string;
   modelName: null | string;
   modelSysId: null | string;
   parent: null | string;
+  provisionId: null | string;
   rackName: null | string;
   rackSysId: null | string;
   rackU: null | number;
+  serialNumber: null | string;
   slot: null | number;
+  substatus: null | string;
   url: null | string;
 }
 // data from cmdb_model
@@ -17,7 +27,7 @@ interface Model {
   modelName: null | string;
   rackUnits: null | number;
 }
-// bad data that did not match any other category
+// bad data that did not match any other category or had a missing parent
 interface BadData {
   displayName: null | string;
   modelCategoryName: null | string;
@@ -41,20 +51,42 @@ interface Pdu {
 }
 // a device that is mounted in a rack unit. may contain sleds or line cards.
 interface RackMounted {
+  assetTag: null | string;
+  ciSysId: null | string;
+  ciName: null | string;
   displayName: null | string;
+  hardwareSkuSysId: null | string;
+  installStatus: null | string;
+  lastPhysicalAudit: null | number;
   lineCards: Record<string, LineCard>;
-  maxChildren: null | number;
+  location: null | string;
   modelCategoryName: null | string;
   modelName: null | string;
+  modelSysId: null | string;
+  provisionId: null | string;
   rackU: null | number;
+  serialNumber: null | string;
   sleds: Record<string, Sled>;
+  substatus: null | string;
   url: null | string;
 }
 // a sled that is parented to a rackmounted object
 interface Sled {
+  assetTag: null | string;
+  ciSysId: null | string;
+  ciName: null | string;
   displayName: null | string;
+  hardwareSkuSysId: null | string;
+  installStatus: null | string;
+  lastPhysicalAudit: null | number;
+  location: null | string;
+  modelCategoryName: null | string;
   modelName: null | string;
+  modelSysId: null | string;
+  provisionId: null | string;
+  serialNumber: null | string;
   slot: null | number;
+  substatus: null | string;
   url: null | string;
 }
 // the rack
@@ -81,10 +113,17 @@ const hasKey = (testObject: any, keyString: any) => {
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
+  tempModelData: Record<string, Model>,
 ) => {
+  let tempModel: Model;
+  let tempModelSysId: null | string;
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a slot
   if (tempHardware.slot === null) {
+    return false;
+  }
+  // slot cannot be less than 1
+  if (tempHardware.slot !== null && tempHardware.slot < 1) {
     return false;
   }
   // needs a parent sys_id
@@ -98,6 +137,27 @@ const testValidChassisSled = (
   // parent needs to be in the same rack
   if (tempHardwareData[tempHardware.parent].rackSysId !== tempHardware.rackSysId) {
     return false;
+  }
+  tempModelSysId = tempHardwareData[tempHardware.parent].modelSysId;
+  // parent has model sys_id
+  if (tempModelSysId === null) {
+    return false;
+  } else {
+    // parent has a model
+    if (!hasKey(tempModelData, tempModelSysId)) {
+      return false;
+    } else {
+      tempModel = tempModelData[tempModelSysId];
+      // parent has a u_max_children value
+      if (tempModel.maxChildren === null) {
+        return false;
+      } else {
+        // slot value cannot exceed u_max_children
+        if (tempHardware.slot > tempModel.maxChildren) {
+          return false;
+        }
+      }
+    }
   }
   // all tests passed
   return true;
@@ -184,7 +244,7 @@ const findCategory = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
 ) => {
-  if (testValidChassisSled(hardwareSysId, tempHardwareData)) {
+  if (testValidChassisSled(hardwareSysId, tempHardwareData, tempModelData)) {
     return 'sled';
   }
   if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
@@ -206,25 +266,12 @@ const sortHardware = (
 ) => {
   let category: string;
   let outputData: Record<string, Rack> = {};
-  let maxChildren: null | number;
-  let modelName: null | string;
-  let modelSysId: null | string;
   let tempLineCards: Record<string, Hardware> = {};
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
-    // get relevant model data
-    maxChildren = null;
-    modelName = null;
-    modelSysId = tempHardwareData[hardwareSysId].modelSysId;
-    if (modelSysId !== null) {
-      if (hasKey(tempModelData, modelSysId)) {
-        maxChildren = tempModelData[modelSysId].maxChildren;
-        modelName = tempModelData[modelSysId].modelName;
-      }
-    }
     // sort the hardware into one of the categories
     category = findCategory(
       hardwareSysId,
@@ -243,105 +290,90 @@ const sortHardware = (
           rackName: tempHardwareData[hardwareSysId].rackName,
         };
       }
-      // badData has quite a lot of visible data, to help see the problem
       if (category === 'badData') {
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
           modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
-          modelName,
+          modelName: tempHardwareData[hardwareSysId].modelCategoryName,
           parent: tempHardwareData[hardwareSysId].parent,
           rackU: tempHardwareData[hardwareSysId].rackU,
           slot: tempHardwareData[hardwareSysId].slot,
           url: tempHardwareData[hardwareSysId].url,
         };
       }
-      // these are pdus that are in the rack, but not mounted
       if (category === 'pdu') {
         outputData[sysIdRack].pdu[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
-          modelName,
+          modelName: tempHardwareData[hardwareSysId].modelCategoryName,
           url: tempHardwareData[hardwareSysId].url,
         };
       }
-      // these are anything that is mounted in a unit in the rack
-      // they contain linecards and sleds objects, these will be filled later
       if (category === 'rackMounted') {
         outputData[sysIdRack].rackMounted[hardwareSysId] = {
+          assetTag: tempHardwareData[hardwareSysId].assetTag,
+          ciSysId: tempHardwareData[hardwareSysId].ciSysId,
+          ciName: tempHardwareData[hardwareSysId].ciName,
           displayName: tempHardwareData[hardwareSysId].displayName,
-          maxChildren,
+          hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
+          installStatus: tempHardwareData[hardwareSysId].installStatus,
+          lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
           lineCards: {},
+          location: tempHardwareData[hardwareSysId].location,
           modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
-          modelName,
+          modelName: tempHardwareData[hardwareSysId].modelCategoryName,
+          modelSysId: tempHardwareData[hardwareSysId].modelSysId,
+          provisionId: tempHardwareData[hardwareSysId].provisionId,
           rackU: tempHardwareData[hardwareSysId].rackU,
+          serialNumber: tempHardwareData[hardwareSysId].serialNumber,
           sleds: {},
+          substatus: tempHardwareData[hardwareSysId].substatus,
           url: tempHardwareData[hardwareSysId].url,
         };
       }
-      // linecards are stored with all Hardware data, but will be slimmed down later
-      // when they are parented to their rackMounted hardware
       if (category === 'lineCard') {
-        tempLineCards[hardwareSysId] = {
-          displayName: tempHardwareData[hardwareSysId].displayName,
-          modelCategoryName: null,
-          modelName,
-          modelSysId: null,
-          parent: tempHardwareData[hardwareSysId].parent,
-          rackName: null,
-          rackSysId: tempHardwareData[hardwareSysId].rackSysId,
-          rackU: null,
-          slot: null,
-          url: tempHardwareData[hardwareSysId].url,
-        };
+        tempLineCards[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
-      // sleds are stored with all Hardware data, but will be slimmed down later
-      // when they are parented to their rackMounted hardware
       if (category === 'sled') {
-        tempSleds[hardwareSysId] = {
-          displayName: tempHardwareData[hardwareSysId].displayName,
-          modelCategoryName: null,
-          modelName,
-          modelSysId: null,
-          parent: tempHardwareData[hardwareSysId].parent,
-          rackName: null,
-          rackSysId: tempHardwareData[hardwareSysId].rackSysId,
-          rackU: null,
-          slot: tempHardwareData[hardwareSysId].slot,
-          url: tempHardwareData[hardwareSysId].url,
-        };
+        tempSleds[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
     }
   });
-  // assess sleds and either parent them to their chassis or store them in badData
+  // sleds and line cards are put in place after everything else to make sure that the object
+  // they are parented to is in place. if the parent failed a test and is not in the final 
+  // data structure then its children end up in bad data
   Object.keys(tempSleds).forEach((hardwareSysId) => {
     let validSled = false;
-    let slot: null | number;
     sysIdParent = tempSleds[hardwareSysId].parent;
     sysIdRack = tempSleds[hardwareSysId].rackSysId;
     // this is a formality. all hardware should have a rack sys_id
     if (sysIdRack !== null) {
-      // this is a formality. all sleds have already been checked for a parent
+      // this is a formality. all sleds have already been checked for a parent sys_id
       if (sysIdParent !== null) {
         // check that the rack already exists in outputData
         if (hasKey(outputData, sysIdRack)) {
           // check that the sleds parent exists in the racks rackMounted
           if (hasKey(outputData[sysIdRack].rackMounted, sysIdParent)) {
-            maxChildren = outputData[sysIdRack].rackMounted[sysIdParent].maxChildren;
-            slot = tempSleds[hardwareSysId].slot;
-            // sleds can only be parented to a rackmounted object with a valid u_max_children value
-            if (maxChildren !== null) {
-              // slot value must be valid
-              if (slot !== null && slot > 0 && slot <= maxChildren) {
-                // set this to true so that it is not stored in badData
-                validSled = true;
-                // parent the sled to its chassis
-                outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
-                  displayName: tempSleds[hardwareSysId].displayName,
-                  modelName: tempSleds[hardwareSysId].modelName,
-                  slot: tempSleds[hardwareSysId].slot,
-                  url: tempSleds[hardwareSysId].url,
-                };
-              }
-            }
+            // set this to true so that it is not stored in badData
+            validSled = true;
+            // parent the sled to its chassis
+            outputData[sysIdRack].rackMounted[sysIdParent].sleds[hardwareSysId] = {
+              assetTag: tempHardwareData[hardwareSysId].assetTag,
+              ciSysId: tempHardwareData[hardwareSysId].ciSysId,
+              ciName: tempHardwareData[hardwareSysId].ciName,
+              displayName: tempSleds[hardwareSysId].displayName,
+              hardwareSkuSysId: tempHardwareData[hardwareSysId].hardwareSkuSysId,
+              installStatus: tempHardwareData[hardwareSysId].installStatus,
+              lastPhysicalAudit: tempHardwareData[hardwareSysId].lastPhysicalAudit,
+              location: tempHardwareData[hardwareSysId].location,
+              modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
+              modelName: tempSleds[hardwareSysId].modelName,
+              modelSysId: tempHardwareData[hardwareSysId].modelSysId,
+              provisionId: tempHardwareData[hardwareSysId].provisionId,
+              serialNumber: tempHardwareData[hardwareSysId].serialNumber,
+              slot: tempSleds[hardwareSysId].slot,
+              substatus: tempHardwareData[hardwareSysId].substatus,
+              url: tempSleds[hardwareSysId].url,
+            };
           }
         }
       }
@@ -359,7 +391,6 @@ const sortHardware = (
       }
     }
   });
-  // assess line cards and either parent them to rackMounted hardware or store them in badData
   Object.keys(tempLineCards).forEach((hardwareSysId) => {
     let validLineCard = false;
     sysIdParent = tempLineCards[hardwareSysId].parent;
@@ -419,22 +450,81 @@ const main = (
       // use an object with all fields set to null as default. these null values will only be
       // replaced if the data from servicenow passes rigorous tests
       tempHardware = {
+        assetTag: null,
+        ciSysId: null,
+        ciName: null,
         displayName: null,
+        hardwareSkuSysId: null,
+        installStatus: null,
+        lastPhysicalAudit: null,
+        location: null,
         modelCategoryName: null,
         modelName: null,
         modelSysId: null,
         parent: null,
+        provisionId: null,
         rackName: null,
         rackSysId: null,
         rackU: null,
+        serialNumber: null,
         slot: null,
+        substatus: null,
         url: null,
       };
       //
-      testData = grHardware.getDisplayValue('display_name');
+      testData = grHardware.getValue('asset_tag');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.assetTag = testData;
+        }
+      }
+      //
+      testData = grHardware.getValue('ci');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.ciSysId = testData;
+        }
+      }
+      //
+      testData = grHardware.getDisplayValue('ci');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.ciName = testData;
+        }
+      }
+      //
+      testData = grHardware.getValue('display_name');
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.displayName = testData;
+        }
+      }
+      //
+      testData = grHardware.getValue('u_hardware_sku');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.hardwareSkuSysId = testData;
+        }
+      }
+      //
+      testData = grHardware.getDisplayValue('install_status');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.installStatus = testData;
+        }
+      }
+      //
+      testData = grHardware.getValue('u_last_physical_audit');
+      // @ts-ignore
+      if (new GlideDateTime(testData).getNumericValue() !== 0) {
+        // @ts-ignore
+        tempHardware.lastPhysicalAudit = new GlideDateTime(testData).getNumericValue();
+      }
+      //
+      testData = grHardware.getDisplayValue('location');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.location = testData;
         }
       }
       //
@@ -442,6 +532,13 @@ const main = (
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.modelCategoryName = testData;
+        }
+      }
+      //
+      testData = grHardware.getDisplayValue('model');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.modelName = testData;
         }
       }
       //
@@ -458,6 +555,13 @@ const main = (
       if (typeof testData === 'string') {
         if (testData !== '') {
           tempHardware.parent = testData;
+        }
+      }
+      //
+      testData = grHardware.getValue('u_provisioning_budget_code');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.provisionId = testData;
         }
       }
       //
@@ -480,21 +584,45 @@ const main = (
         tempHardware.rackU = parseInt(testData, 10);
       }
       //
+      testData = grHardware.getValue('serial_number');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.serialNumber = testData;
+        }
+      }
+      //
       testData = grHardware.getValue('u_slot');
       if (!isNaN(parseInt(testData, 10))) {
         tempHardware.slot = parseInt(testData, 10);
       }
+      //
+      testData = grHardware.getValue('substatus');
+      if (typeof testData === 'string') {
+        if (testData !== '') {
+          tempHardware.substatus = testData;
+        }
+      }
       // modelName is null for now, but later will be combined with the data from cmdb_model
       hardwareData[grHardware.getUniqueValue()] = {
+        assetTag: tempHardware.assetTag,
+        ciSysId: tempHardware.ciSysId,
+        ciName: tempHardware.ciName,
         displayName: tempHardware.displayName,
+        hardwareSkuSysId: tempHardware.hardwareSkuSysId,
+        installStatus: tempHardware.installStatus,
+        lastPhysicalAudit: tempHardware.lastPhysicalAudit,
+        location: tempHardware.location,
         modelCategoryName: tempHardware.modelCategoryName,
-        modelName: null,
+        modelName: tempHardware.modelName,
         modelSysId: tempHardware.modelSysId,
         parent: tempHardware.parent,
+        provisionId: tempHardware.provisionId,
         rackName: tempHardware.rackName,
         rackSysId: tempHardware.rackSysId,
         rackU: tempHardware.rackU,
+        serialNumber: tempHardware.serialNumber,
         slot: tempHardware.slot,
+        substatus: tempHardware.substatus,
         url: `${site}/alm_hardware.do?sys_id=${grHardware.getUniqueValue()}`,
       };
     }
