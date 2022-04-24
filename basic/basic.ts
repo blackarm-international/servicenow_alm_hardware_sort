@@ -157,14 +157,6 @@ const testValidLineCard = (
   if (tempHardware.parent === null) {
     return false;
   }
-  // parent must exist
-  if (!hasKey(tempHardwareData, tempHardware.parent)) {
-    return false;
-  }
-  // parent must be in the same rack
-  if (tempHardwareData[tempHardware.parent].rackSysId !== tempHardware.rackSysId) {
-    return false;
-  }
   // model category must be correct
   if (tempHardware.modelCategoryName !== 'Network Gear') {
     return false;
