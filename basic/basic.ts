@@ -79,11 +79,13 @@ interface Rack {
   rackMounted: Record<string, RackMounted>;
   rackName: null | string;
 }
-// this is used by the functions that test hardware 
+// this is used by the functions that test hardware
+// returns a boolean and a string explaining why it failed
 interface SortResult {
   pass: boolean;
   feedBack: string;
 }
+// a gathered sorting report with a fail string for each category
 interface SortReport {
   hardwareType: string;
   failLineCard: string;
