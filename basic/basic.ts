@@ -33,6 +33,10 @@ interface Model {
 // bad data that did not match any other category or had a missing parent
 interface BadData {
   displayName: null | string;
+  failLineCard: string;
+  failPdu: string;
+  failRackMount: string;
+  failSled: string;
   modelCategoryName: null | string;
   modelName: null | string;
   parent: null | string;
@@ -75,11 +79,44 @@ interface Rack {
   rackMounted: Record<string, RackMounted>;
   rackName: null | string;
 }
+// this is used by the functions that test hardware 
+interface SortResult {
+  pass: boolean;
+  feedBack: string;
+}
+interface SortReport {
+  hardwareType: string;
+  failLineCard: string;
+  failPdu: string;
+  failRackMount: string;
+  failSled: string;
+}
 // a list of rack sys_ids that will be used to search alm_hardware
 const rackSysIdList: Array<string> = [
   'c2ea8b2edb151f80a9885205dc9619d9',
   '3abaa3f4db271788259e5898dc9619ab',
   '17cb27f8db271788259e5898dc96197e',
+  'bc22df4adb1ec70cab79f7d41d9619f6',
+  'b817db4edb168bc010b6f1561d961914',
+  'f4738c21dbb1c7442b56541adc96196a',
+  'b1c34461dbb1c7442b56541adc96198f',
+  'efd3cc61dbb1c7442b56541adc961978',
+  'bdba2b74db271788259e5898dc9619a4',
+  '3abaa3f4db271788259e5898dc9619ab',
+  '3bba63f4db271788259e5898dc961971',
+  '30cae3f4db271788259e5898dc961926',
+  '0aca67f4db271788259e5898dc961979',
+  'e3a4fc5bdb7f8b80a9885205dc9619a5',
+  '3eca67f4db271788259e5898dc961980',
+  '3bca27f4db271788259e5898dc9619a1',
+  '09da2bf4db271788259e5898dc961954',
+  'c2da63f4db271788259e5898dc96197a',
+  '03da2bf4db271788259e5898dc961946',
+  '40c4789bdb7f8b80a9885205dc9619d8',
+  '9dec376a2b45820054a41bc5a8da15e9',
+  'c2ea8b2edb151f80a9885205dc9619d9',
+  'fa94f8ebdbed389459ac6e25ca9619fe',
+  'acbc736a2b45820054a41bc5a8da1503',
 ];
 // used to create urls in the data
 // @ts-ignore
@@ -89,6 +126,7 @@ const hasKey = (testObject: any, keyString: any) => {
   return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
 // test whether hardware is a valid sled
+// there are not all of the tests a sled needs, some occur later when the sled is going to be added to the nested data
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -96,18 +134,30 @@ const testValidChassisSled = (
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a slot
   if (tempHardware.slot === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a sled - slot missing',
+    };
   }
   // slot cannot be zero or negative
   if (tempHardware.slot !== null && tempHardware.slot < 1) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a sled - sled is zero or negative',
+    };
   }
   // needs a parent sys_id
   if (tempHardware.parent === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a sled - parent is null',
+    };
   }
   // all tests passed
-  return true;
+  return {
+    pass: true,
+    feedBack: '',
+  };
 };
 // test whether hardware is a valid rack mounted object
 const testValidRackMounted = (
@@ -118,34 +168,58 @@ const testValidRackMounted = (
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // rack mounted hardware should not have a parent
   if (tempHardware.parent !== null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - has a parent',
+    };
   }
   // should have a rack_u
   if (tempHardware.rackU === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - rack_u missing',
+    };
   }
   // rack_u should not be zero
   if (tempHardware.rackU === 0) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - rack_u is zero',
+    };
   }
   // needs a model sys_id
   if (tempHardware.modelSysId === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - model sys_id missing',
+    };
   }
   // model sys_id must relate to an existing model
   if (!hasKey(tempModelData, tempHardware.modelSysId)) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - model not found',
+    };
   }
   // the model must have a height in rack_units
   if (tempModelData[tempHardware.modelSysId].rackUnits === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - rackUnits missing',
+    };
   }
   // model height cannot be zero
   if (tempModelData[tempHardware.modelSysId].rackUnits === 0) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not rack mounted - rackUnits is zero',
+    };
   }
   // all tests passed
-  return true;
+  return {
+    pass: true,
+    feedBack: '',
+  };
 };
 // test whether hardware is a valid line card
 const testValidLineCard = (
@@ -155,14 +229,23 @@ const testValidLineCard = (
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a parent sys_id
   if (tempHardware.parent === null) {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a line card - parent is null',
+    };
   }
   // model category must be correct
   if (tempHardware.modelCategoryName !== 'Network Gear') {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a line card - model category not network gear',
+    };
   }
   // all tests passed
-  return true;
+  return {
+    pass: true,
+    feedBack: '',
+  };
 };
 // test whether hardware is a pdu
 const testValidPdu = (
@@ -172,10 +255,16 @@ const testValidPdu = (
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // model category must be correct
   if (tempHardware.modelCategoryName !== 'PDU') {
-    return false;
+    return {
+      pass: false,
+      feedBack: 'not a pdu - model category is not PDU',
+    };
   }
   // all tests passed
-  return true;
+  return {
+    pass: true,
+    feedBack: '',
+  };
 };
 // sort hardware into different categories and return an identifing string
 const findCategory = (
@@ -183,27 +272,57 @@ const findCategory = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
 ) => {
-  if (testValidChassisSled(hardwareSysId, tempHardwareData)) {
-    return 'sled';
+  let sortResult: SortResult;
+  let sortReport: SortReport;
+  sortReport = {
+    hardwareType: '',
+    failLineCard: '',
+    failPdu: '',
+    failRackMount: '',
+    failSled: '',
+  };
+  // test for sled
+  sortResult = testValidChassisSled(hardwareSysId, tempHardwareData);
+  if (sortResult.pass) {
+    sortReport.hardwareType = 'sled';
+    return sortReport;
+  } else {
+    sortReport.failSled += sortResult.feedBack;
   }
-  if (testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData)) {
-    return 'rackMounted';
+  // test for rackMounted
+  sortResult = testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData);
+  if (sortResult.pass) {
+    sortReport.hardwareType = 'rackMounted';
+    return sortReport;
+  } else {
+    sortReport.failRackMount += sortResult.feedBack;
   }
-  if (testValidLineCard(hardwareSysId, tempHardwareData)) {
-    return 'lineCard';
+  // test for line card
+  sortResult = testValidLineCard(hardwareSysId, tempHardwareData);
+  if (sortResult.pass) {
+    sortReport.hardwareType = 'lineCard';
+    return sortReport;
+  } else {
+    sortReport.failLineCard += sortResult.feedBack;
   }
-  if (testValidPdu(hardwareSysId, tempHardwareData)) {
-    return 'pdu';
+  // test for pdu
+  sortResult = testValidPdu(hardwareSysId, tempHardwareData);
+  if (sortResult.pass) {
+    sortReport.hardwareType = 'pdu';
+    return sortReport;
+  } else {
+    sortReport.failPdu += sortResult.feedBack;
   }
   // if the hardware failed all of the test then it ends up in badData
-  return 'badData';
+  sortReport.hardwareType = 'badData';
+  return sortReport;
 };
 // this builds the nested data
 const sortHardware = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
 ) => {
-  let category: string;
+  let sortReport: SortReport;
   let maxChildren: null | number;
   let modelSysId: null | string;
   let outputData: Record<string, Rack> = {};
@@ -229,7 +348,7 @@ const sortHardware = (
       }
     }
     // sort the hardware into one of the categories
-    category = findCategory(
+    sortReport = findCategory(
       hardwareSysId,
       tempHardwareData,
       tempModelData,
@@ -246,9 +365,13 @@ const sortHardware = (
           rackName: tempHardwareData[hardwareSysId].rackName,
         };
       }
-      if (category === 'badData') {
+      if (sortReport.hardwareType === 'badData') {
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
+          failLineCard: sortReport.failLineCard,
+          failPdu: sortReport.failPdu,
+          failRackMount: sortReport.failRackMount,
+          failSled: sortReport.failSled,
           modelCategoryName: tempHardwareData[hardwareSysId].modelCategoryName,
           modelName: tempHardwareData[hardwareSysId].modelCategoryName,
           parent: tempHardwareData[hardwareSysId].parent,
@@ -257,14 +380,14 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
       }
-      if (category === 'pdu') {
+      if (sortReport.hardwareType === 'pdu') {
         outputData[sysIdRack].pdu[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
           modelName: tempHardwareData[hardwareSysId].modelCategoryName,
           url: tempHardwareData[hardwareSysId].url,
         };
       }
-      if (category === 'rackMounted') {
+      if (sortReport.hardwareType === 'rackMounted') {
         outputData[sysIdRack].rackMounted[hardwareSysId] = {
           displayName: tempHardwareData[hardwareSysId].displayName,
           lineCards: {},
@@ -288,21 +411,24 @@ const sortHardware = (
         }
       }
       // store data to be tested once all rackMounted objects are in place
-      if (category === 'lineCard') {
+      if (sortReport.hardwareType === 'lineCard') {
         tempLineCards[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
       // store data to be tested once all rackMounted objects are in place
-      if (category === 'sled') {
+      if (sortReport.hardwareType === 'sled') {
         tempSleds[hardwareSysId] = tempHardwareData[hardwareSysId];
       }
     }
   });
   // process sleds
   Object.keys(tempSleds).forEach((hardwareSysId) => {
-    // assume this is not a sled until proved otherwise
-    let validSled = false;
+    let errorMessage: string;
     let testChassis: RackMounted;
     let testSlot: null | number;
+    let validSled: boolean;
+    // assume this is not a sled until proved otherwise
+    validSled = false;
+    errorMessage = '';
     sysIdParent = tempSleds[hardwareSysId].parent;
     sysIdRack = tempSleds[hardwareSysId].rackSysId;
     // this is a formality. all hardware should have a rack sys_id
@@ -341,15 +467,27 @@ const sortHardware = (
                 if (testData !== null) {
                   provisionIdUnique[testData] = true;
                 }
+              } else {
+                errorMessage = 'slot exceeds max children of parent chassis';
               }
+            } else {
+              errorMessage = 'parent chassis does not have max children';
             }
+          } else {
+            errorMessage = 'parent chassis not found';
           }
+        } else {
+          errorMessage = 'rack not found';
         }
       }
       if (validSled === false) {
         // this sled failed one of the above tests, so store it in the rack's badData
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempSleds[hardwareSysId].displayName,
+          failLineCard: '',
+          failPdu: '',
+          failRackMount: '',
+          failSled: errorMessage,
           modelCategoryName: tempSleds[hardwareSysId].modelCategoryName,
           modelName: tempSleds[hardwareSysId].modelName,
           parent: tempSleds[hardwareSysId].parent,
@@ -364,6 +502,8 @@ const sortHardware = (
   Object.keys(tempLineCards).forEach((hardwareSysId) => {
     // assume this is not a line card until proved otherwise
     let validLineCard = false;
+    let errorMessage: string;
+    errorMessage = '';
     sysIdParent = tempLineCards[hardwareSysId].parent;
     sysIdRack = tempLineCards[hardwareSysId].rackSysId;
     // this is a formality. all hardware should have a rack sys_id
@@ -382,13 +522,21 @@ const sortHardware = (
               modelName: tempLineCards[hardwareSysId].modelName,
               url: tempLineCards[hardwareSysId].url,
             };
+          } else {
+            errorMessage = 'parent not found';
           }
+        } else {
+          errorMessage = 'rack not found';
         }
       }
       if (validLineCard === false) {
         // this line card failed one of the above tests, so store it in the rack's badData
         outputData[sysIdRack].badData[hardwareSysId] = {
           displayName: tempLineCards[hardwareSysId].displayName,
+          failLineCard: errorMessage,
+          failPdu: '',
+          failRackMount: '',
+          failSled: '',
           modelCategoryName: tempLineCards[hardwareSysId].modelCategoryName,
           modelName: tempLineCards[hardwareSysId].modelName,
           parent: tempLineCards[hardwareSysId].parent,
