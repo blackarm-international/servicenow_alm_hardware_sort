@@ -211,6 +211,11 @@ const sortHardware = (
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
+  let testData: any;
+  // variables for collecting more data
+  let ciSysIdUnique: Record<string, boolean> = {};
+  let hardwareSkuSysIdUnique: Record<string, boolean> = {};
+  let provisionIdUnique: Record<string, boolean> = {};
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
     // get maxchildren from model data so it can be added to rackMounted
@@ -268,6 +273,19 @@ const sortHardware = (
           sleds: {},
           url: tempHardwareData[hardwareSysId].url,
         };
+        // collect sys_ids for further data collection
+        testData = tempHardwareData[hardwareSysId].ciSysId;
+        if (testData !== null) {
+          ciSysIdUnique[testData] = true;
+        }
+        testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+        if (testData !== null) {
+          hardwareSkuSysIdUnique[testData] = true;
+        }
+        testData = tempHardwareData[hardwareSysId].provisionId;
+        if (testData !== null) {
+          provisionIdUnique[testData] = true;
+        }
       }
       // store data to be tested once all rackMounted objects are in place
       if (category === 'lineCard') {
@@ -310,6 +328,19 @@ const sortHardware = (
                   slot: tempSleds[hardwareSysId].slot,
                   url: tempSleds[hardwareSysId].url,
                 };
+                // collect sys_ids for further data collection
+                testData = tempHardwareData[hardwareSysId].ciSysId;
+                if (testData !== null) {
+                  ciSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+                if (testData !== null) {
+                  hardwareSkuSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].provisionId;
+                if (testData !== null) {
+                  provisionIdUnique[testData] = true;
+                }
               }
             }
           }
@@ -369,7 +400,21 @@ const sortHardware = (
     }
   });
   // @ts-ignore
+  gs.print('outputData');
+  // @ts-ignore
   gs.print(JSON.stringify(outputData, null, 2));
+  // @ts-ignore
+  gs.print('ciSysIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(ciSysIdUnique, null, 2));
+  // @ts-ignore
+  gs.print('hardwareSkuSysIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
+  // @ts-ignore
+  gs.print('provisionIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 const main = (
   sysIdRackList: Array<string>,
@@ -608,7 +653,8 @@ const main = (
         // @ts-ignore
         tempModel.endOfSoftware = new GlideDateTime(testData).getNumericValue();
       }
-      //
+      // u_max_children is a custom field showing how many slots a chassis has
+      // without this value, sleds cannot be parented to chassis
       testData = grModel.getValue('u_max_children');
       if (!isNaN(parseInt(testData, 10))) {
         tempModel.maxChildren = parseInt(testData, 10);

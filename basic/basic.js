@@ -71,14 +71,6 @@ var testValidLineCard = function (hardwareSysId, tempHardwareData) {
     if (tempHardware.parent === null) {
         return false;
     }
-    // parent must exist
-    if (!hasKey(tempHardwareData, tempHardware.parent)) {
-        return false;
-    }
-    // parent must be in the same rack
-    if (tempHardwareData[tempHardware.parent].rackSysId !== tempHardware.rackSysId) {
-        return false;
-    }
     // model category must be correct
     if (tempHardware.modelCategoryName !== 'Network Gear') {
         return false;
@@ -123,6 +115,11 @@ var sortHardware = function (tempHardwareData, tempModelData) {
     var tempSleds = {};
     var sysIdParent;
     var sysIdRack;
+    var testData;
+    // variables for collecting more data
+    var ciSysIdUnique = {};
+    var hardwareSkuSysIdUnique = {};
+    var provisionIdUnique = {};
     // loop through all of the hardware from alm_hardware
     Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
         // get maxchildren from model data so it can be added to rackMounted
@@ -176,6 +173,19 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                     sleds: {},
                     url: tempHardwareData[hardwareSysId].url,
                 };
+                // collect sys_ids for further data collection
+                testData = tempHardwareData[hardwareSysId].ciSysId;
+                if (testData !== null) {
+                    ciSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+                if (testData !== null) {
+                    hardwareSkuSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].provisionId;
+                if (testData !== null) {
+                    provisionIdUnique[testData] = true;
+                }
             }
             // store data to be tested once all rackMounted objects are in place
             if (category === 'lineCard') {
@@ -218,6 +228,19 @@ var sortHardware = function (tempHardwareData, tempModelData) {
                                     slot: tempSleds[hardwareSysId].slot,
                                     url: tempSleds[hardwareSysId].url,
                                 };
+                                // collect sys_ids for further data collection
+                                testData = tempHardwareData[hardwareSysId].ciSysId;
+                                if (testData !== null) {
+                                    ciSysIdUnique[testData] = true;
+                                }
+                                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+                                if (testData !== null) {
+                                    hardwareSkuSysIdUnique[testData] = true;
+                                }
+                                testData = tempHardwareData[hardwareSysId].provisionId;
+                                if (testData !== null) {
+                                    provisionIdUnique[testData] = true;
+                                }
                             }
                         }
                     }
@@ -277,7 +300,21 @@ var sortHardware = function (tempHardwareData, tempModelData) {
         }
     });
     // @ts-ignore
+    gs.print('outputData');
+    // @ts-ignore
     gs.print(JSON.stringify(outputData, null, 2));
+    // @ts-ignore
+    gs.print('ciSysIdUnique');
+    // @ts-ignore
+    gs.print(JSON.stringify(ciSysIdUnique, null, 2));
+    // @ts-ignore
+    gs.print('hardwareSkuSysIdUnique');
+    // @ts-ignore
+    gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
+    // @ts-ignore
+    gs.print('provisionIdUnique');
+    // @ts-ignore
+    gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 var main = function (sysIdRackList) {
     var ciSysIdUnique = {};
@@ -514,7 +551,8 @@ var main = function (sysIdRackList) {
                 // @ts-ignore
                 tempModel.endOfSoftware = new GlideDateTime(testData).getNumericValue();
             }
-            //
+            // u_max_children is a custom field showing how many slots a chassis has
+            // without this value, sleds cannot be parented to chassis
             testData = grModel.getValue('u_max_children');
             if (!isNaN(parseInt(testData, 10))) {
                 tempModel.maxChildren = parseInt(testData, 10);
