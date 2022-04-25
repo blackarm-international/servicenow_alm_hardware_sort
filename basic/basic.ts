@@ -166,8 +166,15 @@ const testValidRackMounted = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
+  tempRackHeight: Record<string, null | number>,
 ) => {
+  let modelSysId: string;
+  let rackU: number;
+  let rackUnits: number;
+  let rackHeight: number;
+  let rackSysId: string;
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
+  let testData: any;
   // rack mounted hardware should not have a parent
   if (tempHardware.parent !== null) {
     return {
@@ -216,6 +223,37 @@ const testValidRackMounted = (
       pass: false,
       feedBack: 'not rack mounted - rackUnits is zero',
     };
+  }
+  // height cannnot exceed rack
+  testData = tempHardware.rackSysId;
+  if (testData !== null) {
+    rackSysId = testData;
+    if (hasKey(tempRackHeight, rackSysId)) {
+      testData = tempRackHeight[rackSysId];
+      if (testData !== null) {
+        rackHeight = testData;
+        testData = tempHardware.modelSysId;
+        if (testData !== null) {
+          modelSysId = testData;
+          if (hasKey(tempModelData, modelSysId)) {
+            testData = tempModelData[tempHardware.modelSysId].rackUnits;
+            if (testData !== null) {
+              rackUnits = testData;
+              testData = tempHardware.rackU;
+              if (testData !== null) {
+                rackU = testData;
+                if (rackU + rackUnits > rackHeight + 1) {
+                  return {
+                    pass: false,
+                    feedBack: 'not rack mounted - height exceeds rack',
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
   // all tests passed
   return {
@@ -273,6 +311,7 @@ const findCategory = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
+  tempRackHeight: Record<string, null | number>,
 ) => {
   let sortResult: SortResult;
   let sortReport: SortReport;
@@ -292,7 +331,7 @@ const findCategory = (
     sortReport.failSled += sortResult.feedBack;
   }
   // test for rackMounted
-  sortResult = testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData);
+  sortResult = testValidRackMounted(hardwareSysId, tempHardwareData, tempModelData, tempRackHeight);
   if (sortResult.pass) {
     sortReport.hardwareType = 'rackMounted';
     return sortReport;
@@ -323,6 +362,7 @@ const findCategory = (
 const sortHardware = (
   tempHardwareData: Record<string, Hardware>,
   tempModelData: Record<string, Model>,
+  tempRackHeight: Record<string, null | number>,
 ) => {
   let sortReport: SortReport;
   let maxChildren: null | number;
@@ -332,11 +372,11 @@ const sortHardware = (
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
-  let testData: any;
+  // let testData: any;
   // variables for collecting more data
-  let ciSysIdUnique: Record<string, boolean> = {};
-  let hardwareSkuSysIdUnique: Record<string, boolean> = {};
-  let provisionIdUnique: Record<string, boolean> = {};
+  // let ciSysIdUnique: Record<string, boolean> = {};
+  // let hardwareSkuSysIdUnique: Record<string, boolean> = {};
+  // let provisionIdUnique: Record<string, boolean> = {};
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
     // get maxchildren from model data so it can be added to rackMounted
@@ -354,6 +394,7 @@ const sortHardware = (
       hardwareSysId,
       tempHardwareData,
       tempModelData,
+      tempRackHeight,
     );
     sysIdRack = tempHardwareData[hardwareSysId].rackSysId;
     // this if statement is just a formality. all hardware should have a rack sys_id
@@ -399,18 +440,18 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
         // collect sys_ids for further data collection
-        testData = tempHardwareData[hardwareSysId].ciSysId;
-        if (testData !== null) {
-          ciSysIdUnique[testData] = true;
-        }
-        testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-        if (testData !== null) {
-          hardwareSkuSysIdUnique[testData] = true;
-        }
-        testData = tempHardwareData[hardwareSysId].provisionId;
-        if (testData !== null) {
-          provisionIdUnique[testData] = true;
-        }
+        // testData = tempHardwareData[hardwareSysId].ciSysId;
+        // if (testData !== null) {
+        //   ciSysIdUnique[testData] = true;
+        // }
+        // testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+        // if (testData !== null) {
+        //   hardwareSkuSysIdUnique[testData] = true;
+        // }
+        // testData = tempHardwareData[hardwareSysId].provisionId;
+        // if (testData !== null) {
+        //   provisionIdUnique[testData] = true;
+        // }
       }
       // store data to be tested once all rackMounted objects are in place
       if (sortReport.hardwareType === 'lineCard') {
@@ -457,18 +498,18 @@ const sortHardware = (
                   url: tempSleds[hardwareSysId].url,
                 };
                 // collect sys_ids for further data collection
-                testData = tempHardwareData[hardwareSysId].ciSysId;
-                if (testData !== null) {
-                  ciSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-                if (testData !== null) {
-                  hardwareSkuSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].provisionId;
-                if (testData !== null) {
-                  provisionIdUnique[testData] = true;
-                }
+                // testData = tempHardwareData[hardwareSysId].ciSysId;
+                // if (testData !== null) {
+                //   ciSysIdUnique[testData] = true;
+                // }
+                // testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+                // if (testData !== null) {
+                //   hardwareSkuSysIdUnique[testData] = true;
+                // }
+                // testData = tempHardwareData[hardwareSysId].provisionId;
+                // if (testData !== null) {
+                //   provisionIdUnique[testData] = true;
+                // }
               } else {
                 errorMessage = 'slot exceeds max children of parent chassis';
               }
@@ -553,18 +594,18 @@ const sortHardware = (
   gs.print('outputData');
   // @ts-ignore
   gs.print(JSON.stringify(outputData, null, 2));
-  // @ts-ignore
-  gs.print('ciSysIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(ciSysIdUnique, null, 2));
-  // @ts-ignore
-  gs.print('hardwareSkuSysIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
-  // @ts-ignore
-  gs.print('provisionIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(provisionIdUnique, null, 2));
+  // // @ts-ignore
+  // gs.print('ciSysIdUnique');
+  // // @ts-ignore
+  // gs.print(JSON.stringify(ciSysIdUnique, null, 2));
+  // // @ts-ignore
+  // gs.print('hardwareSkuSysIdUnique');
+  // // @ts-ignore
+  // gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
+  // // @ts-ignore
+  // gs.print('provisionIdUnique');
+  // // @ts-ignore
+  // gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 const main = (
   sysIdRackList: Array<string>,
@@ -575,10 +616,22 @@ const main = (
   let modelData: Record<string, Model> = {};
   let modelSysIdUnique: Record<string, boolean> = {};
   let modelSysIdList: Array<string>;
+  let rackHeight: Record<string, null | number> = {};
   let tempHardware: Hardware;
   let tempModel: Model;
   let testData: any;
   if (sysIdRackList.length !== 0) {
+    // @ts-ignore
+    const grRack = new GlideRecord('cmdb_ci_rack');
+    grRack.addQuery('sys_id', 'IN', sysIdRackList);
+    grRack.query();
+    while (grRack.next()) {
+      rackHeight[grRack.getUniqueValue()] = null;
+      testData = grRack.getValue('rack_units');
+      if (!isNaN(parseInt(testData, 10))) {
+        rackHeight[grRack.getUniqueValue()] = parseInt(testData, 10);
+      }
+    }
     // @ts-ignore
     const grHardware = new GlideRecord('alm_hardware');
     grHardware.addQuery('u_rack', 'IN', sysIdRackList);
@@ -827,6 +880,7 @@ const main = (
   sortHardware(
     hardwareData,
     modelData,
+    rackHeight,
   );
 };
 //
