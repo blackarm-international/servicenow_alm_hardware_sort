@@ -128,11 +128,11 @@ const hasKey = (testObject: any, keyString: any) => {
   return Object.prototype.hasOwnProperty.call(testObject, keyString);
 };
 // test whether hardware is a valid sled
-// there are not all of the tests a sled needs, some occur later when the sled is going to be added to the nested data
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
-) => {
+  ) => {
+  // these are not all of the tests a sled needs, some occur later when the sled is going to be added to the nested data
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a slot
   if (tempHardware.slot === null) {
@@ -169,9 +169,9 @@ const testValidRackMounted = (
   tempRackHeight: Record<string, null | number>,
 ) => {
   let modelSysId: string;
-  let rackU: number;
-  let rackUnits: number;
-  let rackHeight: number;
+  let rackU: null | number;
+  let rackUnits: null | number;
+  let rackHeight: null | number;
   let rackSysId: string;
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   let testData: any;
@@ -224,7 +224,8 @@ const testValidRackMounted = (
       feedBack: 'not rack mounted - rackUnits is zero',
     };
   }
-  // height cannnot exceed rack
+  // get height of rack
+  rackHeight = null;
   testData = tempHardware.rackSysId;
   if (testData !== null) {
     rackSysId = testData;
@@ -232,27 +233,34 @@ const testValidRackMounted = (
       testData = tempRackHeight[rackSysId];
       if (testData !== null) {
         rackHeight = testData;
-        testData = tempHardware.modelSysId;
-        if (testData !== null) {
-          modelSysId = testData;
-          if (hasKey(tempModelData, modelSysId)) {
-            testData = tempModelData[tempHardware.modelSysId].rackUnits;
-            if (testData !== null) {
-              rackUnits = testData;
-              testData = tempHardware.rackU;
-              if (testData !== null) {
-                rackU = testData;
-                if (rackU + rackUnits > rackHeight + 1) {
-                  return {
-                    pass: false,
-                    feedBack: 'not rack mounted - height exceeds rack',
-                  };
-                }
-              }
-            }
-          }
-        }
       }
+    }
+  }
+  // get unit where the hardware is mounted
+  rackU = null;
+  testData = tempHardware.rackU;
+  if (testData !== null) {
+    rackU = testData;
+  }
+  // get height of the hardware in units
+  rackUnits = null;
+  testData = tempHardware.modelSysId;
+  if (testData !== null) {
+    modelSysId = testData;
+    if (hasKey(tempModelData, modelSysId)) {
+      testData = tempModelData[tempHardware.modelSysId].rackUnits;
+      if (testData !== null) {
+        rackUnits = testData;
+      }
+    }
+  }
+  // height cannnot exceed rack
+  if (rackU !== null && rackUnits !== null && rackHeight !== null) {
+    if (rackU + rackUnits > rackHeight + 1) {
+      return {
+        pass: false,
+        feedBack: 'not rack mounted - height exceeds rack',
+      };
     }
   }
   // all tests passed
@@ -287,7 +295,7 @@ const testValidLineCard = (
     feedBack: '',
   };
 };
-// test whether hardware is a pdu
+// test whether hardware is a pdu (in the rack, but not mounted in a unit)
 const testValidPdu = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
@@ -372,11 +380,11 @@ const sortHardware = (
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
-  // let testData: any;
+  let testData: any;
   // variables for collecting more data
-  // let ciSysIdUnique: Record<string, boolean> = {};
-  // let hardwareSkuSysIdUnique: Record<string, boolean> = {};
-  // let provisionIdUnique: Record<string, boolean> = {};
+  let ciSysIdUnique: Record<string, boolean> = {};
+  let hardwareSkuSysIdUnique: Record<string, boolean> = {};
+  let provisionIdUnique: Record<string, boolean> = {};
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
     // get maxchildren from model data so it can be added to rackMounted
@@ -440,18 +448,18 @@ const sortHardware = (
           url: tempHardwareData[hardwareSysId].url,
         };
         // collect sys_ids for further data collection
-        // testData = tempHardwareData[hardwareSysId].ciSysId;
-        // if (testData !== null) {
-        //   ciSysIdUnique[testData] = true;
-        // }
-        // testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-        // if (testData !== null) {
-        //   hardwareSkuSysIdUnique[testData] = true;
-        // }
-        // testData = tempHardwareData[hardwareSysId].provisionId;
-        // if (testData !== null) {
-        //   provisionIdUnique[testData] = true;
-        // }
+        testData = tempHardwareData[hardwareSysId].ciSysId;
+        if (testData !== null) {
+          ciSysIdUnique[testData] = true;
+        }
+        testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+        if (testData !== null) {
+          hardwareSkuSysIdUnique[testData] = true;
+        }
+        testData = tempHardwareData[hardwareSysId].provisionId;
+        if (testData !== null) {
+          provisionIdUnique[testData] = true;
+        }
       }
       // store data to be tested once all rackMounted objects are in place
       if (sortReport.hardwareType === 'lineCard') {
@@ -498,18 +506,18 @@ const sortHardware = (
                   url: tempSleds[hardwareSysId].url,
                 };
                 // collect sys_ids for further data collection
-                // testData = tempHardwareData[hardwareSysId].ciSysId;
-                // if (testData !== null) {
-                //   ciSysIdUnique[testData] = true;
-                // }
-                // testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-                // if (testData !== null) {
-                //   hardwareSkuSysIdUnique[testData] = true;
-                // }
-                // testData = tempHardwareData[hardwareSysId].provisionId;
-                // if (testData !== null) {
-                //   provisionIdUnique[testData] = true;
-                // }
+                testData = tempHardwareData[hardwareSysId].ciSysId;
+                if (testData !== null) {
+                  ciSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
+                if (testData !== null) {
+                  hardwareSkuSysIdUnique[testData] = true;
+                }
+                testData = tempHardwareData[hardwareSysId].provisionId;
+                if (testData !== null) {
+                  provisionIdUnique[testData] = true;
+                }
               } else {
                 errorMessage = 'slot exceeds max children of parent chassis';
               }
@@ -594,18 +602,18 @@ const sortHardware = (
   gs.print('outputData');
   // @ts-ignore
   gs.print(JSON.stringify(outputData, null, 2));
-  // // @ts-ignore
-  // gs.print('ciSysIdUnique');
-  // // @ts-ignore
-  // gs.print(JSON.stringify(ciSysIdUnique, null, 2));
-  // // @ts-ignore
-  // gs.print('hardwareSkuSysIdUnique');
-  // // @ts-ignore
-  // gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
-  // // @ts-ignore
-  // gs.print('provisionIdUnique');
-  // // @ts-ignore
-  // gs.print(JSON.stringify(provisionIdUnique, null, 2));
+  // @ts-ignore
+  gs.print('ciSysIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(ciSysIdUnique, null, 2));
+  // @ts-ignore
+  gs.print('hardwareSkuSysIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
+  // @ts-ignore
+  gs.print('provisionIdUnique');
+  // @ts-ignore
+  gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 const main = (
   sysIdRackList: Array<string>,
