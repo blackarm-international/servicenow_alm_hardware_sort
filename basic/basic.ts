@@ -131,7 +131,7 @@ const hasKey = (testObject: any, keyString: any) => {
 const testValidChassisSled = (
   hardwareSysId: string,
   tempHardwareData: Record<string, Hardware>,
-  ) => {
+) => {
   // these are not all of the tests a sled needs, some occur later when the sled is going to be added to the nested data
   const tempHardware: Hardware = tempHardwareData[hardwareSysId];
   // needs a slot
