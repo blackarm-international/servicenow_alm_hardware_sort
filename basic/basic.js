@@ -267,11 +267,6 @@ var sortHardware = function (tempHardwareData, tempModelData, tempRackHeight) {
     var tempSleds = {};
     var sysIdParent;
     var sysIdRack;
-    var testData;
-    // variables for collecting more data
-    var ciSysIdUnique = {};
-    var hardwareSkuSysIdUnique = {};
-    var provisionIdUnique = {};
     // loop through all of the hardware from alm_hardware
     Object.keys(tempHardwareData).forEach(function (hardwareSysId) {
         // get maxchildren from model data so it can be added to rackMounted
@@ -329,19 +324,6 @@ var sortHardware = function (tempHardwareData, tempModelData, tempRackHeight) {
                     sleds: {},
                     url: tempHardwareData[hardwareSysId].url,
                 };
-                // collect sys_ids for further data collection
-                testData = tempHardwareData[hardwareSysId].ciSysId;
-                if (testData !== null) {
-                    ciSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-                if (testData !== null) {
-                    hardwareSkuSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].provisionId;
-                if (testData !== null) {
-                    provisionIdUnique[testData] = true;
-                }
             }
             // store data to be tested once all rackMounted objects are in place
             if (sortReport.hardwareType === 'lineCard') {
@@ -387,19 +369,6 @@ var sortHardware = function (tempHardwareData, tempModelData, tempRackHeight) {
                                     slot: tempSleds[hardwareSysId].slot,
                                     url: tempSleds[hardwareSysId].url,
                                 };
-                                // collect sys_ids for further data collection
-                                testData = tempHardwareData[hardwareSysId].ciSysId;
-                                if (testData !== null) {
-                                    ciSysIdUnique[testData] = true;
-                                }
-                                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-                                if (testData !== null) {
-                                    hardwareSkuSysIdUnique[testData] = true;
-                                }
-                                testData = tempHardwareData[hardwareSysId].provisionId;
-                                if (testData !== null) {
-                                    provisionIdUnique[testData] = true;
-                                }
                             }
                             else {
                                 errorMessage = 'slot exceeds max children of parent chassis';
@@ -490,18 +459,6 @@ var sortHardware = function (tempHardwareData, tempModelData, tempRackHeight) {
     gs.print('outputData');
     // @ts-ignore
     gs.print(JSON.stringify(outputData, null, 2));
-    // @ts-ignore
-    gs.print('ciSysIdUnique');
-    // @ts-ignore
-    gs.print(JSON.stringify(ciSysIdUnique, null, 2));
-    // @ts-ignore
-    gs.print('hardwareSkuSysIdUnique');
-    // @ts-ignore
-    gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
-    // @ts-ignore
-    gs.print('provisionIdUnique');
-    // @ts-ignore
-    gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 var main = function (sysIdRackList) {
     var ciSysIdUnique = {};

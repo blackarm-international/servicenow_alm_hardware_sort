@@ -96,29 +96,9 @@ interface SortReport {
 // a list of rack sys_ids that will be used to search alm_hardware
 const rackSysIdList: Array<string> = [
   'c2ea8b2edb151f80a9885205dc9619d9',
-  '3abaa3f4db271788259e5898dc9619ab',
   '17cb27f8db271788259e5898dc96197e',
-  'bc22df4adb1ec70cab79f7d41d9619f6',
   'b817db4edb168bc010b6f1561d961914',
-  'f4738c21dbb1c7442b56541adc96196a',
-  'b1c34461dbb1c7442b56541adc96198f',
-  'efd3cc61dbb1c7442b56541adc961978',
-  'bdba2b74db271788259e5898dc9619a4',
-  '3abaa3f4db271788259e5898dc9619ab',
-  '3bba63f4db271788259e5898dc961971',
-  '30cae3f4db271788259e5898dc961926',
-  '0aca67f4db271788259e5898dc961979',
-  'e3a4fc5bdb7f8b80a9885205dc9619a5',
-  '3eca67f4db271788259e5898dc961980',
-  '3bca27f4db271788259e5898dc9619a1',
-  '09da2bf4db271788259e5898dc961954',
-  'c2da63f4db271788259e5898dc96197a',
   '03da2bf4db271788259e5898dc961946',
-  '40c4789bdb7f8b80a9885205dc9619d8',
-  '9dec376a2b45820054a41bc5a8da15e9',
-  'c2ea8b2edb151f80a9885205dc9619d9',
-  'fa94f8ebdbed389459ac6e25ca9619fe',
-  'acbc736a2b45820054a41bc5a8da1503',
 ];
 // used to create urls in the data
 // @ts-ignore
@@ -380,11 +360,6 @@ const sortHardware = (
   let tempSleds: Record<string, Hardware> = {};
   let sysIdParent: null | string;
   let sysIdRack: null | string;
-  let testData: any;
-  // variables for collecting more data
-  let ciSysIdUnique: Record<string, boolean> = {};
-  let hardwareSkuSysIdUnique: Record<string, boolean> = {};
-  let provisionIdUnique: Record<string, boolean> = {};
   // loop through all of the hardware from alm_hardware
   Object.keys(tempHardwareData).forEach((hardwareSysId) => {
     // get maxchildren from model data so it can be added to rackMounted
@@ -447,19 +422,6 @@ const sortHardware = (
           sleds: {},
           url: tempHardwareData[hardwareSysId].url,
         };
-        // collect sys_ids for further data collection
-        testData = tempHardwareData[hardwareSysId].ciSysId;
-        if (testData !== null) {
-          ciSysIdUnique[testData] = true;
-        }
-        testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-        if (testData !== null) {
-          hardwareSkuSysIdUnique[testData] = true;
-        }
-        testData = tempHardwareData[hardwareSysId].provisionId;
-        if (testData !== null) {
-          provisionIdUnique[testData] = true;
-        }
       }
       // store data to be tested once all rackMounted objects are in place
       if (sortReport.hardwareType === 'lineCard') {
@@ -505,19 +467,6 @@ const sortHardware = (
                   slot: tempSleds[hardwareSysId].slot,
                   url: tempSleds[hardwareSysId].url,
                 };
-                // collect sys_ids for further data collection
-                testData = tempHardwareData[hardwareSysId].ciSysId;
-                if (testData !== null) {
-                  ciSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].hardwareSkuSysId;
-                if (testData !== null) {
-                  hardwareSkuSysIdUnique[testData] = true;
-                }
-                testData = tempHardwareData[hardwareSysId].provisionId;
-                if (testData !== null) {
-                  provisionIdUnique[testData] = true;
-                }
               } else {
                 errorMessage = 'slot exceeds max children of parent chassis';
               }
@@ -602,18 +551,6 @@ const sortHardware = (
   gs.print('outputData');
   // @ts-ignore
   gs.print(JSON.stringify(outputData, null, 2));
-  // @ts-ignore
-  gs.print('ciSysIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(ciSysIdUnique, null, 2));
-  // @ts-ignore
-  gs.print('hardwareSkuSysIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(hardwareSkuSysIdUnique, null, 2));
-  // @ts-ignore
-  gs.print('provisionIdUnique');
-  // @ts-ignore
-  gs.print(JSON.stringify(provisionIdUnique, null, 2));
 };
 const main = (
   sysIdRackList: Array<string>,
